@@ -140,8 +140,7 @@ buttons_data = [
     {"id": "article", "label": "صياغة المقال", "icon": "📄"},
 ]
 
-# *** هنا تم تصحيح الخطأ السابق (إغلاق القوس) ***
-cols = st.columns(len(buttons_data)) 
+cols = st.columns(len(buttons_data))
 
 for i, btn in enumerate(buttons_data):
     with cols[i]:
@@ -173,7 +172,7 @@ prompts = {
 
 curr_mode = st.session_state.page
 curr_prompt = prompts.get(curr_mode, "")
-# استخراج العنوان الحالي بطريقة آمنة
+
 curr_label = ""
 for b in buttons_data:
     if b['id'] == curr_mode:
@@ -184,7 +183,7 @@ for b in buttons_data:
 # 6. منطقة العمل
 # ==========================================
 
-# استخدام f-strings مع 3 علامات اقتباس لتجنب الأخطاء
+# العنوان وصندوق الإدخال
 st.markdown(f"""<div class="input-card">""", unsafe_allow_html=True)
 st.markdown(f"""<div class="section-label">📌 النص الخام (INPUT) - {curr_label}</div>""", unsafe_allow_html=True)
 
@@ -192,6 +191,17 @@ input_text = st.text_area("input", height=200, label_visibility="collapsed", pla
 
 st.markdown("""</div>""", unsafe_allow_html=True)
 
+# زر المعالجة (تم التأكد من إغلاق الأقواس بدقة هنا)
 c1, c2, c3 = st.columns([1, 2, 1]) 
 with c2:
-    process_btn = st.button("✨ معالجة فورية ✨", type="primary
+    process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
+
+# منطق المعالجة
+if process_btn and input_text:
+    with st.spinner('⏳ جاري المعالجة...'):
+        try:
+            # 1. تحديد الموديل
+            model_name = get_working_model()
+            
+            # 2. الإعداد
+            gen
