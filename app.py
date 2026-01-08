@@ -8,7 +8,7 @@ import time
 st.set_page_config(page_title="Diwan Smart Editor", layout="wide", page_icon="🎙️")
 
 # ==========================================
-# 2. التصميم (Teal UI + Animations)
+# 2. التصميم (Teal UI)
 # ==========================================
 st.markdown("""
 <style>
@@ -82,7 +82,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. محرك الذكاء الاصطناعي (Clean & Safe)
+# 3. دالة الاستكشاف التلقائي للموديل (The Fix)
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -90,36 +90,38 @@ try:
 except:
     st.error("⚠️ المفتاح مفقود.")
 
-def generate_safe_content(prompt, input_text):
+def get_working_model():
     """
-    نسخة نظيفة تستخدم فقط الموديلات الجديدة والمضمونة
+    هذه الدالة لا تخمن الاسم، بل تسأل جوجل: 'ما هي الموديلات المتاحة لي؟'
+    وتختار أفضل واحد موجود فعلياً.
     """
-    # قائمة الموديلات المحدثة (حذفنا gemini-pro و latest)
-    safe_models = [
-        'gemini-1.5-flash', # الخيار الأساسي (سريع ومجاني)
-        'gemini-1.5-pro'    # الخيار البديل (أذكى)
-    ]
-    
-    last_error = None
-    
-    for model_name in safe_models:
-        try:
-            # إعداد الموديل
-            gen_config = {"temperature": 0.7, "max_output_tokens": 8192}
-            model = genai.GenerativeModel(model_name, generation_config=gen_config)
+    try:
+        # جلب قائمة الموديلات المتاحة للمفتاح
+        available_models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available_models.append(m.name)
+        
+        # البحث عن الموديلات بالترتيب الأفضل
+        # نبحث عن 1.5 فلاش
+        for m in available_models:
+            if 'gemini-1.5-flash' in m: return m
             
-            # التوليد
-            response = model.generate_content(f"{prompt}\n\nالنص الخام:\n{input_text}", stream=True)
-            return response # إرجاع النتيجة فوراً عند النجاح
+        # إذا لم نجد فلاش، نبحث عن 1.5 برو
+        for m in available_models:
+            if 'gemini-1.5-pro' in m: return m
             
-        except Exception as e:
-            # تسجيل الخطأ ومحاولة الموديل التالي
-            last_error = e
-            time.sleep(1) # انتظار ثانية لتخفيف الضغط
-            continue
+        # إذا لم نجد، نبحث عن أي موديل برو
+        for m in available_models:
+            if 'gemini-pro' in m: return m
             
-    # إذا فشل الموديلان (غالباً بسبب الضغط الشديد 429)
-    raise last_error
+        # إذا وجدنا أي موديل آخر
+        if available_models: return available_models[0]
+        
+    except Exception as e:
+        return 'models/gemini-1.5-flash' # اسم افتراضي للمحاولة الأخيرة
+
+    return 'models/gemini-pro'
 
 # ==========================================
 # 4. الهيدر والأزرار
@@ -194,28 +196,9 @@ with c2:
     process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
 
 if process_btn and input_text:
-    with st.spinner('⏳ جاري الصياغة...'):
+    with st.spinner('⏳ جاري البحث عن الموديل والاتصال...'):
         try:
-            # استخدام الدالة الآمنة
-            response_stream = generate_safe_content(curr_prompt, input_text)
+            # 1. الخطوة الأهم: اكتشاف اسم الموديل الصحيح تلقائياً
+            model_name = get_working_model()
             
-            st.markdown(f'<div class="section-label" style="margin-top:30px; color:white;">💎 النتيجة النهائية</div>', unsafe_allow_html=True)
-            res_placeholder = st.empty()
-            
-            full_text = ""
-            for chunk in response_stream:
-                if chunk.text:
-                    full_text += chunk.text
-                    res_placeholder.markdown(f'<div class="result-card">{full_text}</div>', unsafe_allow_html=True)
-                    
-        except Exception as e:
-            # رسالة خطأ واضحة في حال تجاوز الحصة
-            if "429" in str(e):
-                st.warning("⚠️ تجاوزت الحد المسموح (Quota Exceeded). يرجى الانتظار 30 ثانية قبل المحاولة.")
-            elif "404" in str(e):
-                st.error("⚠️ خطأ في اسم الموديل. تأكد من إزالة الموديلات القديمة.")
-            else:
-                st.error(f"حدث خطأ غير متوقع: {e}")
-
-elif process_btn and not input_text:
-    st.warning("⚠️ الرجاء إدخال نص أولاً!")
+            #
