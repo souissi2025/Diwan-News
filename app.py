@@ -82,7 +82,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. دالة الاستكشاف التلقائي للموديل
+# 3. الاتصال والموديل
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -164,44 +164,4 @@ TUNISIAN_RULES = """
 prompts = {
     "article": f"المهمة: صياغة خبر إذاعي رئيسي متكامل.\n{TUNISIAN_RULES}",
     "titles": f"المهمة: اقتراح 5 عناوين احترافية متنوعة.\n{TUNISIAN_RULES}",
-    "flash": f"المهمة: موجز إخباري سريع ومكثف (أقل من 50 كلمة).\n{TUNISIAN_RULES}",
-    "quotes": f"المهمة: استخراج وتنسيق أهم التصريحات.\n{TUNISIAN_RULES}",
-    "event": "المهمة: البحث عن السياق التاريخي لهذا الحدث.",
-    "audio": f"المهمة: تحرير النص المفرغ صوتياً ليصبح مقروءاً.\n{TUNISIAN_RULES}"
-}
-
-curr_mode = st.session_state.page
-curr_prompt = prompts.get(curr_mode, "")
-
-curr_label = ""
-for b in buttons_data:
-    if b['id'] == curr_mode:
-        curr_label = b['label'].replace('\n', ' ')
-        break
-
-# ==========================================
-# 6. منطقة العمل
-# ==========================================
-
-# العنوان وصندوق الإدخال
-st.markdown(f"""<div class="input-card">""", unsafe_allow_html=True)
-st.markdown(f"""<div class="section-label">📌 النص الخام (INPUT) - {curr_label}</div>""", unsafe_allow_html=True)
-
-input_text = st.text_area("input", height=200, label_visibility="collapsed", placeholder="أدخل النص هنا...")
-
-st.markdown("""</div>""", unsafe_allow_html=True)
-
-# زر المعالجة (تم التأكد من إغلاق الأقواس بدقة هنا)
-c1, c2, c3 = st.columns([1, 2, 1]) 
-with c2:
-    process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
-
-# منطق المعالجة
-if process_btn and input_text:
-    with st.spinner('⏳ جاري المعالجة...'):
-        try:
-            # 1. تحديد الموديل
-            model_name = get_working_model()
-            
-            # 2. الإعداد
-            gen
+    "flash": f"المهمة: موج
