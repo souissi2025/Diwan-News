@@ -2,35 +2,35 @@ import streamlit as st
 import google.generativeai as genai
 
 # ==========================================
-# 1. إعداد الصفحة (تصميم رسمي نظيف)
+# 1. إعداد الصفحة (أنيق ومريح للقراءة)
 # ==========================================
-st.set_page_config(page_title="Diwan News Wire", layout="wide", page_icon="📠")
+st.set_page_config(page_title="Diwan Editor Pro", layout="wide", page_icon="✒️")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; }
     
-    /* تصميم التقرير الرسمي */
-    .wire-report {
-        background-color: #ffffff;
-        padding: 35px;
-        border: 1px solid #e0e0e0;
-        border-top: 5px solid #0E738A; /* لون ديوان الرسمي */
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    /* تصميم الورقة التحريرية */
+    .editorial-paper {
+        background-color: #fff;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.06);
+        border-right: 6px solid #D95F18; /* لمسة ديوان */
         font-size: 18px;
-        line-height: 2.1;
-        color: #111;
+        line-height: 2.2; /* تباعد مريح للأسطر */
+        color: #222;
         white-space: pre-wrap;
     }
     
-    /* تحسين الأزرار */
     .stButton>button {
-        width: 100%; height: 60px; font-weight: bold; font-size: 16px;
-        background-color: #2c3e50; color: white; border: none; border-radius: 6px;
+        width: 100%; height: 65px; font-weight: bold; font-size: 16px;
+        background: linear-gradient(to right, #2c3e50, #4ca1af); /* تدرج لوني فخم */
+        color: white; border: none; border-radius: 6px;
         transition: 0.3s;
     }
-    .stButton>button:hover { background-color: #1a252f; }
+    .stButton>button:hover { opacity: 0.9; }
     
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
@@ -49,8 +49,7 @@ except:
 # ==========================================
 # 3. الموديل
 # ==========================================
-def get_news_model():
-    # الأولوية للموديلات القادرة على الالتزام بالتعليمات الصارمة
+def get_pro_model():
     target = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
     try:
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -61,77 +60,72 @@ def get_news_model():
     return 'gemini-pro'
 
 # ==========================================
-# 4. البرومبت "المحاكي" (TAP Style without TAP Name)
+# 4. البرومبت "الصحفي المخضرم" (Sophisticated Editor Prompt)
 # ==========================================
-AGENCY_PROMPT = """
-أنت محرر أول في قسم الأخبار بإذاعة "ديوان أف أم".
-المهمة: صياغة تقرير إخباري رسمي جداً، يحاكي بدقة أسلوب وكالات الأنباء الرسمية (مثل وكالة تونس أفريقيا للأنباء)، ولكن بهوية الإذاعة.
+# هذا البرومبت يطلب "الأناقة" في الصياغة مع "الصرامة" في المعلومات
+EDITOR_PROMPT = """
+أنت "سكرتير تحرير" خبير في إذاعة ديوان أف أم.
+المهمة: إعادة صياغة النص الخام ليصبح مقالاً صحفياً متين الصياغة، سلس القراءة، ومحكماً.
 
-⛔ تعليمات صارمة (Strict Rules):
-1. **الأسلوب:** جاف، موضوعي، مباشر، خالي تماماً من العواطف والمحسنات البديعية.
-2. **الهوية:** ابدأ النص وجوباً بـ: **(تونس/المنطقة - ديوان أف أم)**.
-3. **الممنوعات:** يُمنع منعاً باتاً كتابة "(وات)" أو "TAP" أو ذكر اسم الوكالة الرسمية. نحن نحاكي الأسلوب فقط ولا ننتحل الصفة.
-4. **الأفعال المعتمدة:** استخدم حصرياً أفعالاً مثل: (أفاد، أعلن، اعتبر، شدّد، أشار، جدّد، أوضح).
-5. **الهيكلة:**
-   - الفقرة الأولى: تلخيص دقيق للحدث/القرار (دون مقدمات).
-   - الفقرات التالية: تفاصيل القرار والمواقف.
-   - الفقرة الأخيرة: السياق القانوني أو الخلفية (إن وجدت).
+🎯 التوجيهات الدقيقة (The Balance):
+1. **حرية الصياغة:** مسموح لك بإضافة "روابط لغوية" وعبارات انتقالية (مثل: "وفي سياق متصل"، "مشدداً على أن"، "مما يعكس حرص...") لربط الأفكار وجعل النص يتدفق بسلاسة.
+2. **قدسية الخبر:** لا تضف أي معلومة، رقم، تاريخ، أو اسم غير موجود في النص الأصلي. (جوّد الأسلوب ولا تغير الحقائق).
+3. **الأسلوب:** استخدم لغة عربية "أنيقة" (Elegant) ورصينة. ابتعد عن الركاكة والجمل المتقطعة. اجعل القارئ يشعر أن وراء النص قلماً محترفاً.
+4. **التوقيع:** ابدأ بـ: **(تونس - ديوان أف أم)**.
 
-النتيجة المطلوبة: نص رصين، دقيق، وكامل.
+الشكل المطلوب:
+نص متماسك، فقرات مترابطة، لغة قوية، دون عناوين فرعية كثيرة.
 """
 
 # ==========================================
-# 5. الواجهة (مع البث المباشر Streaming)
+# 5. الواجهة (Streaming Enabled)
 # ==========================================
-st.title("📠 Diwan News Wire")
-st.caption("نظام التحرير الإخباري الرسمي")
+st.title("✒️ Diwan Editor Pro")
+st.caption("نظام الصياغة الصحفية الاحترافية (Flow & Accuracy)")
 
-col_in, col_out = st.columns([1, 1.2])
+col_in, col_out = st.columns([1, 1.3])
 
 with col_in:
-    st.markdown("### 📥 النص / البيان")
-    input_text = st.text_area("ألصق النص هنا:", height=550, placeholder="ضع نص البيان أو المعلومات الخام...")
+    st.markdown("### 📥 النص الخام")
+    input_text = st.text_area("ألصق النص:", height=600, placeholder="أدخل النص هنا...")
     
-    if st.button("📝 صياغة رسمية (نمط الوكالات)"):
+    if st.button("✨ تحرير وصياغة (بلمسة احترافية)"):
         if input_text:
-            st.session_state.streaming = True
+            st.session_state.streaming_pro = True
         else:
             st.warning("أدخل نصاً.")
 
 with col_out:
-    st.markdown("### 📰 التقرير الجاهز")
+    st.markdown("### 📰 النص المُصاغ")
     
-    # حاوية فارغة للعرض المباشر
     report_container = st.empty()
     
-    if st.session_state.get('streaming') and input_text:
+    if st.session_state.get('streaming_pro') and input_text:
         try:
-            model_name = get_news_model()
+            model_name = get_pro_model()
             
-            # إعدادات الرسمية (حرارة منخفضة جداً 0.3) لضمان عدم "التأليف"
-            news_config = {
-                "temperature": 0.3,
-                "top_p": 0.8,
-                "max_output_tokens": 8192, # حد أقصى مرتفع جداً لمنع الانقطاع
+            # درجة حرارة 0.7: المعادلة الذهبية
+            # تسمح بجمال الأسلوب (Style) لكن تمنع الخيال الواسع (Hallucination)
+            pro_config = {
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "max_output_tokens": 8192,
             }
             
-            model = genai.GenerativeModel(model_name, generation_config=news_config)
+            model = genai.GenerativeModel(model_name, generation_config=pro_config)
             
-            # تشغيل البث المباشر
             response = model.generate_content(
-                f"{AGENCY_PROMPT}\n\nالنص الخام:\n{input_text}",
+                f"{EDITOR_PROMPT}\n\nالنص الخام:\n{input_text}",
                 stream=True 
             )
             
-            # تجميع النص وعرضه
             full_text = ""
             for chunk in response:
                 if chunk.text:
                     full_text += chunk.text
-                    # تحديث النص في كل لحظة
-                    report_container.markdown(f'<div class="wire-report">{full_text}</div>', unsafe_allow_html=True)
+                    report_container.markdown(f'<div class="editorial-paper">{full_text}</div>', unsafe_allow_html=True)
             
-            st.caption("✅ تمت الصياغة.")
+            st.caption("✅ تم التحرير.")
             
         except Exception as e:
-            st.error(f"حدث خطأ أثناء المعالجة: {e}")
+            st.error(f"حدث خطأ: {e}")
