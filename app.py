@@ -1,16 +1,19 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. إعداد الصفحة ---
-st.set_page_config(page_title="Diwan Newsroom", layout="wide", page_icon="🎙️")
+# --- 1. إعداد الصفحة والستايل ---
+st.set_page_config(page_title="Diwan Newsroom Pro", layout="wide", page_icon="🎙️")
+
 st.markdown("""
 <style>
     .stButton>button {
-        width: 100%; height: 80px; border-radius: 12px;
-        font-size: 18px; font-weight: bold; background-color: #0E738A; color: white;
+        width: 100%; height: 70px; border-radius: 10px;
+        font-size: 16px; font-weight: bold; background-color: #f0f2f6; color: #31333F;
+        border: 1px solid #d6d6d6;
     }
-    .stButton>button:hover { background-color: #D95F18; border-color: white; }
-    h1 { color: #0E738A; }
+    .stButton>button:hover { background-color: #ffe0b2; border-color: #ff8c00; color: #ff8c00; }
+    h1, h2, h3 { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .stTextArea textarea { font-size: 16px; font-family: 'Courier New', monospace; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -19,110 +22,176 @@ try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 except:
-    st.error("⚠️ المفتاح مفقود.")
+    st.error("⚠️ المفتاح مفقود (GEMINI_API_KEY).")
     st.stop()
 
-# --- 3. دالة ذكية لاختيار الموديل المتاح ---
-def get_working_model():
-    # قائمة أسماء نحاول معها بالترتيب
-    candidates = [
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-1.0-pro",
-        "gemini-pro"
-    ]
-    # محاولة تجربة الأسماء المعروفة
-    return genai.GenerativeModel("gemini-1.5-flash") # نجرب الفلاش كخيار أول
+# --- 3. الدالة الذكية لاختيار الموديل ---
+def get_model(temp=0.3):
+    # نحاول استخدام Pro 1.5 للجودة العالية، وإذا فشل نستخدم Flash للسرعة
+    candidates = ["gemini-1.5-pro", "gemini-pro", "gemini-1.5-flash"]
+    
+    # محاولة كشف الموديلات المتاحة
+    available = []
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available.append(m.name)
+    except:
+        pass
 
-# --- 4. التعليمات ---
+    chosen = "gemini-1.5-flash" # الافتراضي
+    if available:
+        for c in candidates:
+            if any(c in a for a in available):
+                chosen = c
+                break
+    
+    return genai.GenerativeModel(chosen, generation_config={"temperature": temp})
+
+# --- 4. هندسة الأوامر (Advanced Prompt Engineering) ---
+# هذه هي "عقل" الصحفي. تم تعديلها لتكون صارمة جداً.
+
+SYS_INSTRUCTIONS = """
+أنت رئيس تحرير في "إذاعة ديوان أف أم". دورك هو إعادة صياغة النصوص لتكون أخباراً احترافية.
+قواعد صارمة:
+1. الموضوعية المطلقة: احذف أي رأي شخصي أو عاطفة.
+2. البناء: استخدم "الهرم المقلوب" (الأهم فالمهم).
+3. اللغة: عربية فصحى حديثة، قوية، خالية من الحشو (مثل: مما لا شك فيه، الجدير بالذكر).
+4. الألقاب: احذف عبارات التفخيم (فخامة، معالي، السيد) واكتفِ بالصفة الوظيفية والاسم.
+5. الأرقام: اكتب الأرقام من 1 إلى 10 بالحروف، وما فوق بالأرقام.
+"""
+
 PROMPTS = {
-    "article": "أنت صحفي محترف. أعد صياغة النص كخبر صحفي (الهرم المقلوب). احذف الألقاب. لغة عربية قوية.",
-    "web": "أنت خبير SEO. أعد صياغة النص للويب. فقرات قصيرة، كلمات مفتاحية، وعنوان جذاب.",
-    "flash": "حول الخبر إلى موجز إذاعي قصير جداً (للمذيع). جمل قصيرة. لا تتجاوز 40 كلمة.",
-    "titles": "اقترح 5 عناوين قوية (إخباري، تساؤلي، مثير، رقمي، فيسبوك).",
-    "quotes": "استخرج أهم التصريحات في نقاط: - [الاسم]: النص.",
-    "history": "حدث في مثل هذا اليوم (تونس، ثم العالم). باختصار."
+    "article": """
+    المهمة: صياغة خبر إذاعي مفصل (Radio Report).
+    - ابدأ بـ "Lead" قوي يجيب عن (من، ماذا، أين، متى).
+    - استخدم جملاً قصيرة ونشيطة (فعل + فاعل).
+    - ادمج الخلفية (Context) في الفقرة الثانية.
+    - النبرة: رسمية، إخبارية، عاجلة.
+    - المخرج: عنوان رئيسي + النص (حوالي 150-200 كلمة).
+    """,
+    
+    "web": """
+    المهمة: تحرير مقال للموقع الإلكتروني (SEO Optimized).
+    - العنوان: يجب أن يكون جذاباً (Clicky) لكن صادقاً.
+    - الهيكلة: فقرات قصيرة جداً (2-3 أسطر).
+    - الكلمات المفتاحية: ركز على الكلمات التي يبحث عنها التونسيون.
+    - في النهاية: اقترح 3 وسوم (Hashtags) وتصنيف الخبر.
+    """,
+    
+    "flash": """
+    المهمة: موجز أخبار (Flash Info) للمذيع.
+    - اكتب للسمع لا للقراءة (Write for the ear).
+    - جمل بسيطة جداً ومباشرة.
+    - تجنب الجمل المعترضة الطويلة.
+    - الطول الأقصى: 40-50 كلمة فقط.
+    """,
+    
+    "titles": """
+    المهمة: اقتراح عناوين بديلة. قدم 5 خيارات:
+    1. عنوان كلاسيكي (وصفي).
+    2. عنوان تساؤلي (هل...).
+    3. عنوان "اقتباس" (أبرز تصريح).
+    4. عنوان ملفت (Catchy) لفيسبوك.
+    5. عنوان قصير جداً (للعاجل).
+    """,
+    
+    "quotes": """
+    المهمة: استخراج وتنسيق التصريحات (Quotes).
+    - استخرج فقط الكلام المباشر الوارد في النص.
+    - التنسيق: 
+      * [الاسم/الصفة]: "نص التصريح..."
+    - إذا كان النص غير مباشر، حوله لمباشر بدقة.
+    """,
+    
+    "analysis": """
+    المهمة: تحليل ما وراء الخبر (زاوية تحليلية).
+    - اشرح دلالات هذا الخبر.
+    - اربطه بسياق الأحداث السابقة في تونس.
+    - ما هي التوقعات المستقبلية بناءً عليه؟
+    - نبرة: تحليل سياسي/اقتصادي رصين.
+    """
 }
 
-# --- 5. الواجهة ---
-st.title("🎙️ ديوان أف أم - المحرر الذكي")
+# --- 5. الواجهة الجانبية (Sidebar) ---
+with st.sidebar:
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Diwan_FM_logo.png/180px-Diwan_FM_logo.png", width=100) # شعار افتراضي أو يمكنك إزالته
+    st.header("⚙️ إعدادات المحرر")
+    
+    # التحكم في درجة "الإبداع"
+    creativity = st.slider("درجة التصرف (Temperature)", 0.0, 1.0, 0.3, help="0: دقيق جداً وحرفي. 1: مبدع ومغيّر للصياغة.")
+    
+    # التحكم في الطول (تعليمات إضافية)
+    length_option = st.radio("طول النص المخرج:", ["تلقائي", "مختصر جداً", "مفصل ومعمق"])
+    length_instruction = ""
+    if length_option == "مختصر جداً": length_instruction = "اجعل النص مختصراً جداً ومركزاً."
+    elif length_option == "مفصل ومعمق": length_instruction = "توسع في التفاصيل والخلفيات."
+
+# --- 6. الواجهة الرئيسية ---
+st.title("🎙️ Diwan Smart Newsroom")
 
 if 'mode' not in st.session_state: st.session_state.mode = "article"
 def set_mode(m): st.session_state.mode = m
 
-c1, c2, c3 = st.columns(3)
-with c1:
-    if st.button("📝 صياغة مقال"): set_mode("article")
-    if st.button("T صانع العناوين"): set_mode("titles")
-with c2:
-    if st.button("✨ تحرير ويب"): set_mode("web")
-    if st.button("((●)) موجز إذاعي"): set_mode("flash")
-with c3:
-    if st.button("ılı أهم التصريحات"): set_mode("quotes")
-    if st.button("📅 حدث اليوم"): set_mode("history")
+# شبكة الأزرار
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button("📝 خبر إذاعي (Article)"): set_mode("article")
+    if st.button("🔍 تحليل (Analysis)"): set_mode("analysis")
+with col2:
+    if st.button("🌐 ويب (Web/SEO)"): set_mode("web")
+    if st.button("🏷️ عناوين (Titles)"): set_mode("titles")
+with col3:
+    if st.button("⚡ موجز (Flash)"): set_mode("flash")
+    if st.button("💬 تصريحات (Quotes)"): set_mode("quotes")
 
 st.markdown("---")
 
-titles_map = {
-    "article": "📝 صياغة مقال صحفي", "web": "✨ تحرير ويب (SEO)",
-    "flash": "((●)) موجز إذاعي", "titles": "T اقتراح عناوين",
-    "quotes": "ılı استخراج التصريحات", "history": "📅 حدث في مثل هذا اليوم"
+# عرض الوضع الحالي
+titles_display = {
+    "article": "تحرير خبر إذاعي رئيسي",
+    "web": "تحرير للموقع (SEO)",
+    "flash": "صياغة موجز (Flash)",
+    "titles": "توليد عناوين",
+    "quotes": "استخراج التصريحات",
+    "analysis": "تحليل وسياق"
 }
-current_mode = st.session_state.mode
-st.header(titles_map[current_mode])
+curr = st.session_state.mode
+st.subheader(f"📌 الوضع الحالي: {titles_display[curr]}")
 
-# الفورم والتنفيذ
-with st.form("my_form"):
-    text_input = st.text_area("أدخل النص أو التاريخ:", height=200)
-    submitted = st.form_submit_button("🚀 تنفيذ المهمة")
+# نموذج الإدخال
+with st.form("editor_form"):
+    text_input = st.text_area("أدخل النص الخام، البيان، أو رؤوس الأقلام:", height=250)
     
-    if submitted:
-        if not text_input:
-            st.warning("أدخل نصاً.")
-        else:
-            st.info("⏳ جاري البحث عن أفضل موديل وتنفيذ الطلب...")
-            
+    c1, c2 = st.columns([1, 4])
+    with c1:
+        submitted = st.form_submit_button("🚀 معالجة النص")
+    
+    if submitted and text_input:
+        with st.spinner('جاري التحرير الذكي...'):
             try:
-                # 1. أولاً: نحاول الحصول على قائمة الموديلات المتاحة لك فعلياً
-                available_models = []
-                try:
-                    for m in genai.list_models():
-                        if 'generateContent' in m.supported_generation_methods:
-                            available_models.append(m.name)
-                except:
-                    pass
+                # 1. تجهيز "البرومبت" الكامل
+                full_prompt = f"""
+                {SYS_INSTRUCTIONS}
                 
-                # 2. اختيار موديل من القائمة
-                chosen_model_name = ""
-                if available_models:
-                    # نفضل الفلاش إذا وجدناه
-                    if 'models/gemini-1.5-flash' in available_models:
-                        chosen_model_name = 'gemini-1.5-flash'
-                    elif 'models/gemini-pro' in available_models:
-                        chosen_model_name = 'gemini-pro'
-                    else:
-                        # نأخذ أول واحد متاح وخلاص
-                        chosen_model_name = available_models[0].replace('models/', '')
-                else:
-                    # إذا فشل البحث، نستخدم الفلاش كحل أخير
-                    chosen_model_name = 'gemini-1.5-flash'
-
-                # 3. التنفيذ بالموديل المختار
-                # st.write(f"Testing Model: {chosen_model_name}") # للتجربة
+                {PROMPTS[curr]}
                 
-                model = genai.GenerativeModel(chosen_model_name)
-                response = model.generate_content(
-                    f"{PROMPTS[current_mode]}\n\nالنص:\n{text_input}"
-                )
-                st.success(f"✅ تم (باستخدام {chosen_model_name}):")
+                تعليمات إضافية: {length_instruction}
+                
+                النص المراد معالجته:
+                {text_input}
+                """
+                
+                # 2. استدعاء الموديل (مع درجة الحرارة المختارة)
+                model = get_model(temp=creativity)
+                response = model.generate_content(full_prompt)
+                
+                # 3. العرض
+                st.success("✅ تم التحرير:")
                 st.markdown(response.text)
                 
+                # إظهار الموديل المستخدم للمراقبة التقنية
+                st.caption(f"المحرك المستخدم: {model.model_name}")
+                
             except Exception as e:
-                st.error(f"❌ فشلت كل المحاولات. الخطأ: {e}")
-                # طباعة القائمة للمساعدة في التشخيص
-                st.write("الموديلات المتاحة في حسابك هي:")
-                try:
-                    for m in genai.list_models():
-                        st.code(m.name)
-                except:
-                    st.write("غير قادر على جلب القائمة.")
+                st.error(f"حدث خطأ أثناء المعالجة: {e}")
