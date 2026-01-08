@@ -165,7 +165,7 @@ elif st.session_state.active_mode is not None:
         if user_input:
             with st.spinner('جاري العمل...'):
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-pro')
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     # دمج التعليمات مع مدخلات المستخدم
                     full_prompt = f"{PROMPTS[current_mode]}\n\nالنص المدخل:\n{user_input}"
                     
@@ -187,4 +187,5 @@ elif st.session_state.active_mode is not None:
 
 else:
     st.info("👈 اختر إحدى الخدمات من القائمة أعلاه للبدء.")
+
     # يمكنك وضع صورة الشعار الكبير هنا كخلفية
