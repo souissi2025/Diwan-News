@@ -82,7 +82,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. محرك الذكاء الاصطناعي (Stable Version)
+# 3. محرك الذكاء الاصطناعي (Clean & Safe)
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -92,13 +92,13 @@ except:
 
 def generate_safe_content(prompt, input_text):
     """
-    دالة آمنة تستخدم فقط الموديلات المستقرة (Version 1.5)
-    وتبتعد عن الموديلات القديمة التي تسبب مشاكل
+    نسخة نظيفة تستخدم فقط الموديلات الجديدة والمضمونة
     """
-    # قائمة الموديلات المضمونة فقط
-    # 1. Flash: سريع ومجاني
-    # 2. Pro: ذكي واحتياطي
-    safe_models = ['gemini-1.5-flash', 'gemini-1.5-pro']
+    # قائمة الموديلات المحدثة (حذفنا gemini-pro و latest)
+    safe_models = [
+        'gemini-1.5-flash', # الخيار الأساسي (سريع ومجاني)
+        'gemini-1.5-pro'    # الخيار البديل (أذكى)
+    ]
     
     last_error = None
     
@@ -108,16 +108,17 @@ def generate_safe_content(prompt, input_text):
             gen_config = {"temperature": 0.7, "max_output_tokens": 8192}
             model = genai.GenerativeModel(model_name, generation_config=gen_config)
             
-            # محاولة التوليد
+            # التوليد
             response = model.generate_content(f"{prompt}\n\nالنص الخام:\n{input_text}", stream=True)
-            return response # نجاح
+            return response # إرجاع النتيجة فوراً عند النجاح
             
         except Exception as e:
+            # تسجيل الخطأ ومحاولة الموديل التالي
             last_error = e
-            time.sleep(1)
+            time.sleep(1) # انتظار ثانية لتخفيف الضغط
             continue
             
-    # إذا فشل الاثنان (غالباً بسبب الحظر المؤقت 429)
+    # إذا فشل الموديلان (غالباً بسبب الضغط الشديد 429)
     raise last_error
 
 # ==========================================
@@ -193,9 +194,9 @@ with c2:
     process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
 
 if process_btn and input_text:
-    with st.spinner('⏳ جاري الاتصال...'):
+    with st.spinner('⏳ جاري الصياغة...'):
         try:
-            # استخدام الدالة الآمنة الجديدة
+            # استخدام الدالة الآمنة
             response_stream = generate_safe_content(curr_prompt, input_text)
             
             st.markdown(f'<div class="section-label" style="margin-top:30px; color:white;">💎 النتيجة النهائية</div>', unsafe_allow_html=True)
@@ -208,12 +209,13 @@ if process_btn and input_text:
                     res_placeholder.markdown(f'<div class="result-card">{full_text}</div>', unsafe_allow_html=True)
                     
         except Exception as e:
+            # رسالة خطأ واضحة في حال تجاوز الحصة
             if "429" in str(e):
-                st.warning("⚠️ جميع الموديلات مشغولة (Quota Exceeded). يرجى الانتظار 40 ثانية.")
+                st.warning("⚠️ تجاوزت الحد المسموح (Quota Exceeded). يرجى الانتظار 30 ثانية قبل المحاولة.")
             elif "404" in str(e):
-                st.error("⚠️ خطأ في اسم الموديل، تم استخدام القائمة الآمنة الآن.")
+                st.error("⚠️ خطأ في اسم الموديل. تأكد من إزالة الموديلات القديمة.")
             else:
-                st.error(f"حدث خطأ: {e}")
+                st.error(f"حدث خطأ غير متوقع: {e}")
 
 elif process_btn and not input_text:
     st.warning("⚠️ الرجاء إدخال نص أولاً!")
