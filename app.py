@@ -2,37 +2,34 @@ import streamlit as st
 import google.generativeai as genai
 
 # ==========================================
-# 1. إعداد الصفحة (Google Studio Style)
+# 1. إعداد الصفحة وتصميم "غرفة الأخبار"
 # ==========================================
-st.set_page_config(page_title="Diwan AI Studio", layout="wide", page_icon="✨")
+st.set_page_config(page_title="Diwan News Wire", layout="wide", page_icon="📠")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; }
     
-    /* محاكاة تصميم النتيجة في جوجل ستوديو */
-    .studio-result {
-        background-color: #f0f4f9; /* لون خلفية جوجل */
-        padding: 35px;
-        border-radius: 12px;
-        border: none;
-        font-size: 17px;
+    /* تصميم التقرير الإخباري الرسمي */
+    .wire-report {
+        background-color: #ffffff;
+        padding: 40px;
+        border: 1px solid #ccc;
+        border-top: 6px solid #b30000; /* أحمر داكن (لون العاجل) */
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        font-size: 18px;
         line-height: 2;
-        color: #1f1f1f;
+        color: #000;
         white-space: pre-wrap;
     }
     
     .stButton>button {
         width: 100%; height: 60px; font-weight: bold; font-size: 16px;
-        background-color: #0b57d0; /* أزرق جوجل */
-        color: white; border: none; border-radius: 25px; /* حواف دائرية */
+        background-color: #2c3e50; color: white; border: none; border-radius: 4px;
         transition: 0.3s;
     }
-    .stButton>button:hover { background-color: #0842a0; box-shadow: 0 4px 12px rgba(11, 87, 208, 0.3); }
-    
-    /* عناوين */
-    h1, h2, h3 { color: #1f1f1f; }
+    .stButton>button:hover { background-color: #1a252f; }
     
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
@@ -49,85 +46,77 @@ except:
     st.stop()
 
 # ==========================================
-# 3. إعداد الموديل "العبقري" (Pro 1.5 Only)
+# 3. الموديل (Pro 1.5)
 # ==========================================
-def get_studio_model():
-    # نبحث تحديداً عن موديلات Pro لأنها المسؤولة عن الصياغة الذكية
-    # الفلاش Flash سريع لكنه "سطحي"، البرو Pro "عميق"
-    target_models = ['models/gemini-1.5-pro', 'models/gemini-1.5-pro-latest', 'models/gemini-pro']
-    
+def get_news_model():
+    # نستخدم Pro 1.5 لأنه الأفضل في الالتزام بالتعليمات المعقدة
+    target = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
     try:
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        for t in target_models:
+        for t in target:
             if t in available: return t
         if available: return available[0]
     except: pass
     return 'gemini-pro'
 
 # ==========================================
-# 4. البرومبت "المفتوح" (بدون قيود خانقة)
+# 4. البرومبت "التقريري" (News Wire Prompt)
 # ==========================================
-# هذا البرومبت يمنحه الحرية التي يجدها في جوجل ستوديو
-STUDIO_PROMPT = """
-أنت كاتب صحفي مبدع ومحترف من الطراز الرفيع.
-لديك نص خام، والمطلوب منك إعادة صياغته ليصبح **مقالاً استثنائياً** لموقع "ديوان أف أم".
+# هذا هو السر: تعليمات صارمة بالموضوعية والابتعاد عن الإنشاء
+AGENCY_PROMPT = """
+أنت محرر أخبار في وكالة أنباء رسمية (مثل TAP أو Reuters).
+المهمة: صياغة "تقرير إخباري" بناءً على النص الخام.
 
-أريدك أن تستخدم ذكاءك في:
-1. **المبادرة:** لا تترجم حرفياً، بل افهم المعنى وأعد صياغته بأسلوبك القوي.
-2. **الربط:** اربط الأحداث ببعضها لتصنع قصة متماسكة.
-3. **اللغة:** استخدم مفردات غنية، عميقة، ومؤثرة (ابتعد عن السطحية).
-4. **العنوان:** ضع عنواناً ذكياً جداً في البداية.
+القواعد الصارمة (Style Guide):
+1. **الموضوعية التامة:** استخدم لغة حيادية وجافة. ابتعد عن العاطفة والدراما (مثل: طعنة غادرة، سم، صدمة).
+2. **الأفعال الخبرية:** استخدم أفعالاً مثل: (أكد، أشار، أوضح، اعتبر، شدد، صرح، أفاد).
+3. **الهيكل:** ابدأ بأهم معلومة (Lead)، ثم التفاصيل، ثم السياق القانوني/الخلفية.
+4. **التكثيف:** اختصر الجمل الطويلة.
+5. **ممنوع:** لا تبدأ بـ "في بيان له" أو مقدمات ركيكة. ادخل في الخبر فوراً (مثال: أدان مجلس الصحافة...).
 
-النص ليس مجرد كلمات، بل هو "قضية". اكتبه بروح المسؤولية والاحترافية.
+الهدف: نص جاهز للنشر في قسم "الأخبار الوطنية" بالموقع.
 """
 
 # ==========================================
 # 5. الواجهة
 # ==========================================
-st.title("✨ Diwan AI Studio")
-st.caption("نسخة مطابقة لجودة Google AI Studio (Gemini 1.5 Pro)")
+st.title("📠 Diwan News Wire")
+st.caption("نظام صياغة الأخبار الرسمية (نمط الوكالات)")
 
-col_input, col_output = st.columns([1, 1.2])
+col_in, col_out = st.columns([1, 1.2])
 
-with col_input:
-    st.markdown("### 📄 النص الأصلي")
-    input_text = st.text_area("مساحة العمل:", height=500, placeholder="ضع النص هنا واتركه يبدع...")
+with col_in:
+    st.markdown("### 📥 البيان / المصدر")
+    input_text = st.text_area("النص الخام:", height=500, placeholder="ضع نص البيان هنا...")
     
-    if st.button("✨ تشغيل (Generate)"):
+    if st.button("📝 صياغة تقرير إخباري (رسمي)"):
         if input_text:
-            st.session_state.run_studio = True
+            st.session_state.do_news = True
         else:
-            st.warning("الرجاء إدخال نص.")
+            st.warning("أدخل نصاً.")
 
-with col_output:
-    st.markdown("### 💎 النتيجة")
+with col_out:
+    st.markdown("### 📰 التقرير الجاهز")
     
-    if st.session_state.get('run_studio') and input_text:
-        with st.spinner('جاري المعالجة بموديل Pro 1.5 (High Creativity)...'):
+    if st.session_state.get('do_news') and input_text:
+        with st.spinner('جاري الصياغة بأسلوب الوكالات...'):
             try:
-                # 1. الموديل: نستخدم Pro حصراً
-                model_name = get_studio_model()
+                model_name = get_news_model()
                 
-                # 2. الإعدادات: نفس إعدادات Google Studio الافتراضية
-                # Temperature 0.9 = إبداع عالي ومبادرة
-                studio_config = {
-                    "temperature": 0.9,
-                    "top_p": 1.0,
-                    "top_k": 40,
-                    "max_output_tokens": 8192,
+                # السر هنا: حرارة منخفضة (0.4) تعني "التزام بالحقائق" و "صفر دراما"
+                # الحرارة العالية (0.9) هي التي كانت تنتج النصوص الأدبية السابقة
+                news_config = {
+                    "temperature": 0.4, 
+                    "top_p": 0.8,
+                    "max_output_tokens": 2048,
                 }
                 
-                model = genai.GenerativeModel(model_name, generation_config=studio_config)
+                model = genai.GenerativeModel(model_name, generation_config=news_config)
                 
-                # 3. التوليد
-                response = model.generate_content(f"{STUDIO_PROMPT}\n\nالنص الأصلي:\n{input_text}")
+                response = model.generate_content(f"{AGENCY_PROMPT}\n\nالنص الخام:\n{input_text}")
                 
-                # 4. العرض بتصميم ستوديو
-                st.markdown(f'<div class="studio-result">{response.text}</div>', unsafe_allow_html=True)
-                
-                # إظهار الموديل المستخدم للتأكد
-                st.caption(f"⚡ Model: {model_name} | Temp: 0.9")
+                st.markdown(f'<div class="wire-report">{response.text}</div>', unsafe_allow_html=True)
+                st.caption(f"تمت الصياغة بموديل: {model_name} | الإعداد: News Wire (Temp 0.4)")
                 
             except Exception as e:
-                st.error("حدث خطأ في الاتصال.")
-                st.write(e)
+                st.error("حدث خطأ تقني.")
