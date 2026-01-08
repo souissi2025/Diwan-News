@@ -91,9 +91,7 @@ except:
     st.error("⚠️ المفتاح مفقود.")
 
 def get_working_model():
-    """
-    تكتشف الموديل المتاح تلقائياً لتجنب أخطاء 404
-    """
+    """تكتشف الموديل المتاح تلقائياً"""
     try:
         available_models = []
         for m in genai.list_models():
@@ -142,4 +140,58 @@ buttons_data = [
     {"id": "article", "label": "صياغة المقال", "icon": "📄"},
 ]
 
-cols = st.columns(len(buttons
+# *** هنا تم تصحيح الخطأ السابق (إغلاق القوس) ***
+cols = st.columns(len(buttons_data)) 
+
+for i, btn in enumerate(buttons_data):
+    with cols[i]:
+        active = (st.session_state.page == btn['id'])
+        if st.button(f"{btn['icon']}\n{btn['label']}", key=btn['id'], type="primary" if active else "secondary", use_container_width=True):
+            set_page(btn['id'])
+            st.rerun()
+
+# ==========================================
+# 5. القواعد والبرومبت
+# ==========================================
+TUNISIAN_RULES = """
+🛑 قواعد إلزامية (Tunisian Style):
+1. التقويم: استخدم الأشهر التونسية (جانفي، فيفري...).
+2. الأسماء: حذف الألقاب (السيد/السيدة) والاكتفاء بالصفة والاسم.
+3. العملة: ذكر المقابل بالدينار التونسي.
+4. التوقيع: ابدأ بـ (تونس - ديوان أف أم).
+5. الأسلوب: موضوعي، هرم مقلوب، لغة قوية.
+"""
+
+prompts = {
+    "article": f"المهمة: صياغة خبر إذاعي رئيسي متكامل.\n{TUNISIAN_RULES}",
+    "titles": f"المهمة: اقتراح 5 عناوين احترافية متنوعة.\n{TUNISIAN_RULES}",
+    "flash": f"المهمة: موجز إخباري سريع ومكثف (أقل من 50 كلمة).\n{TUNISIAN_RULES}",
+    "quotes": f"المهمة: استخراج وتنسيق أهم التصريحات.\n{TUNISIAN_RULES}",
+    "event": "المهمة: البحث عن السياق التاريخي لهذا الحدث.",
+    "audio": f"المهمة: تحرير النص المفرغ صوتياً ليصبح مقروءاً.\n{TUNISIAN_RULES}"
+}
+
+curr_mode = st.session_state.page
+curr_prompt = prompts.get(curr_mode, "")
+# استخراج العنوان الحالي بطريقة آمنة
+curr_label = ""
+for b in buttons_data:
+    if b['id'] == curr_mode:
+        curr_label = b['label'].replace('\n', ' ')
+        break
+
+# ==========================================
+# 6. منطقة العمل
+# ==========================================
+
+# استخدام f-strings مع 3 علامات اقتباس لتجنب الأخطاء
+st.markdown(f"""<div class="input-card">""", unsafe_allow_html=True)
+st.markdown(f"""<div class="section-label">📌 النص الخام (INPUT) - {curr_label}</div>""", unsafe_allow_html=True)
+
+input_text = st.text_area("input", height=200, label_visibility="collapsed", placeholder="أدخل النص هنا...")
+
+st.markdown("""</div>""", unsafe_allow_html=True)
+
+c1, c2, c3 = st.columns([1, 2, 1]) 
+with c2:
+    process_btn = st.button("✨ معالجة فورية ✨", type="primary
