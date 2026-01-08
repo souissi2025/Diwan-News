@@ -2,35 +2,42 @@ import streamlit as st
 import google.generativeai as genai
 
 # ==========================================
-# 1. إعداد الصفحة وتصميم العرض
+# 1. التصميم البصري (نظيف واحترافي)
 # ==========================================
-st.set_page_config(page_title="Diwan Newsroom", layout="wide", page_icon="🎙️")
+st.set_page_config(page_title="Diwan Creative Editor", layout="wide", page_icon="✒️")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; }
     
-    /* تصميم منطقة النتيجة لتبدو كورقة تحرير */
-    .news-paper {
-        background-color: #fff;
-        padding: 40px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        font-size: 18px;
-        line-height: 2;
-        color: #000;
+    /* صندوق النتيجة الاحترافي */
+    .creative-box {
+        background-color: #ffffff;
+        padding: 35px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); /* ظل ناعم */
+        border-right: 6px solid #D95F18; /* اللون البرتقالي المميز */
+        font-size: 17px;
+        line-height: 2.1;
+        color: #2c3e50;
+        white-space: pre-wrap;
     }
     
+    /* تحسين زر التنفيذ */
     .stButton>button {
-        width: 100%; height: 60px; font-weight: bold; 
-        background-color: #0E738A; color: white; border: none;
-        border-radius: 8px; transition: 0.3s;
+        width: 100%; height: 65px; border-radius: 10px;
+        font-size: 18px; font-weight: 800; 
+        background: linear-gradient(90deg, #0E738A 0%, #095c6e 100%);
+        color: white; border: none; transition: 0.3s;
     }
-    .stButton>button:hover { background-color: #0b5e70; }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(14, 115, 138, 0.3);
+    }
     
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;}
+    /* إخفاء العناصر المزعجة */
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -45,85 +52,82 @@ except:
     st.stop()
 
 # ==========================================
-# 3. دالة ضمان العمل (تجاوز الأخطاء)
+# 3. إعداد الموديل "الفنان" (High Creativity)
 # ==========================================
-def get_working_model():
+def get_creative_model():
+    # نحاول استخدام البرو 1.5 لأنه الأفضل في الصياغة الأدبية
+    # إذا لم يعمل، ننتقل للفلاش، ثم القديم
+    priorities = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
+    
     try:
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        # ترتيب الأفضلية للصياغة القوية
-        priority = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
-        for p in priority:
+        for p in priorities:
             if p in available: return p
         if available: return available[0]
     except: pass
-    return 'gemini-pro'
+    
+    return 'gemini-pro' # الملاذ الأخير
 
 # ==========================================
-# 4. "المحرك التحريري" (السر في الصياغة الاحترافية)
+# 4. البرومبت الذكي (Smart Initiative Prompt)
 # ==========================================
-# هنا وضعت تعليمات صارمة جداً لضمان الجودة
-EDITORIAL_PROMPT = """
-أنت "كبير المحررين" (Senior Editor) في مؤسسة "ديوان أف أم".
-المهمة: تحويل النص الخام المدخل إلى مادة إخبارية مكتملة، رصينة، وجاهزة للنشر.
+# هذا البرومبت يعطي الحرية للموديل ليتصرف بذكاء
+CREATIVE_PROMPT = """
+أنت "كبير كتاب المحتوى" (Senior Copywriter) في ديوان أف أم.
+لديك الحرية الكاملة في إعادة صياغة النص بأسلوبك الخاص.
 
-⚠️ قائمة الممنوعات (Strictly Forbidden):
-1. يمنع تماماً استخدام مقدمات المحادثة (مثل: "حسناً"، "إليك النص"، "بصفتي..").
-2. يمنع استخدام عبارات الحشو الصحفي القديمة (مثل: "مما لا شك فيه"، "الجدير بالذكر"، "تجدر الإشارة").
-3. يمنع استخدام صيغ المبني للمجهول الضعيفة (مثل: "تم الذهاب") واستبدلها بالفعل المباشر (مثل: "ذهب").
-4. لا تضع خاتمة إنشائية (مثل: "وفي الختام نأمل...").
+المطلوب منك ليس مجرد تصحيح، بل "إعادة خلق" للنص (Re-creation):
+1. 💡 **المبادرة الذكية:** افهم الفكرة الجوهرية للنص وأعد كتابتها بأسلوب جذاب يشد القارئ/المستمع.
+2. 🎨 **التفنن اللغوي:** استخدم مفردات غنية، تعبيرات قوية، وابتعد عن الركاكة.
+3. 🔗 **التماسك:** اربط الأفكار بسلاسة بحيث تكون قصة متكاملة وليست جملاً متقاطعة.
+4. 🎙️ **الروح:** اجعل للنص "شخصية" (Character) واضحة، تناسب خبراً إذاعياً مهماً.
 
-✅ معايير الصياغة الاحترافية (Guidelines):
-1. العنوان: صغ عنواناً إخبارياً ذكياً (فعل + فاعل) لا يتجاوز 8 كلمات.
-2. المقدمة (Lead): ابدأ بأقوى معلومة في النص تجيب عن (من؟ وماذا؟).
-3. الجسم: رتب التفاصيل حسب الأهمية (الهرم المقلوب).
-4. اللغة: عربية فصحى حديثة (White Arabic)، قوية، خالية من التعقيد، وسلسة القراءة.
-5. التنسيق: افصل بين الفقرات بشكل واضح.
-
-النتيجة المطلوبة: الخبر فقط (العنوان + المتن).
+ملاحظة: لا تضع مقدمات (مثل: إليك النص).. ابدأ بالإبداع فوراً.
 """
 
 # ==========================================
-# 5. الواجهة
+# 5. الواجهة (تقسيم الشاشة)
 # ==========================================
-st.title("🎙️ Diwan Newsroom Pro")
-st.caption("نظام التحرير الصحفي المتقدم")
+st.title("✒️ Diwan Smart Editor")
+st.caption("نسخة الإبداع والمبادرة الذكية (High Creativity Mode)")
 
-col1, col2 = st.columns(2)
+col_in, col_out = st.columns([1, 1.2]) # العمود الأيسر (النتيجة) أعرض قليلاً
 
-with col1:
-    st.markdown("### 📥 النص الخام")
-    input_text = st.text_area("ضع مسودة الخبر هنا:", height=450, placeholder="أدخل النقاط الرئيسية أو النص العشوائي...")
+with col_in:
+    st.markdown("### 📝 النص الأصلي")
+    input_text = st.text_area("مساحة الكتابة:", height=450, placeholder="ضع الأفكار أو النص هنا واترك الباقي عليّ...")
     
-    if st.button("✨ تحرير وتدقيق احترافي"):
+    # مسافة
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    if st.button("✨ إبداع وتطوير النص"):
         if input_text:
-            st.session_state.processing = True
+            st.session_state.do_process = True
         else:
-            st.warning("الرجاء إدخال نص.")
+            st.toast("اكتب شيئاً أولاً!", icon="✍️")
 
-with col2:
-    st.markdown("### 📰 النص المعدل (النتيجة)")
+with col_out:
+    st.markdown("### 💎 النص المطور")
     
-    # حاوية النتيجة
-    if st.session_state.get('processing') and input_text:
-        with st.spinner('جاري تطبيق المعايير التحريرية...'):
+    if st.session_state.get('do_process') and input_text:
+        with st.spinner('جاري التفنن في الصياغة...'):
             try:
-                # إعداد الموديل
-                model_name = get_working_model()
-                # حرارة 0.6 تعطي توازناً مثالياً بين الإبداع والالتزام بالقواعد
-                model = genai.GenerativeModel(model_name, generation_config={"temperature": 0.6})
+                # 1. إعداد الموديل
+                model_name = get_creative_model()
                 
-                # المعالجة
-                full_request = f"{EDITORIAL_PROMPT}\n\nالنص للمعالجة:\n{input_text}"
-                response = model.generate_content(full_request)
+                # إعدادات الحرارة 0.9 = قمة الإبداع
+                config = {"temperature": 0.9, "top_p": 1, "max_output_tokens": 2048}
+                model = genai.GenerativeModel(model_name, generation_config=config)
                 
-                # عرض النتيجة بتنسيق الورقة الصحفية
-                st.markdown(f'<div class="news-paper">{response.text}</div>', unsafe_allow_html=True)
+                # 2. التوليد
+                response = model.generate_content(f"{CREATIVE_PROMPT}\n\nالنص الأصلي:\n{input_text}")
                 
-                # زر نسخ سريع
-                st.code(response.text, language=None)
-                st.caption("✅ تمت الصياغة وفق معايير ديوان أف أم.")
+                # 3. عرض النتيجة (مرة واحدة فقط وبشكل جميل)
+                st.markdown(f'<div class="creative-box">{response.text}</div>', unsafe_allow_html=True)
+                
+                # تنظيف الحالة لمنع التكرار عند التحديث
+                # st.session_state.do_process = False 
                 
             except Exception as e:
-                st.error("حدث خطأ في الاتصال، حاول مجدداً.")
-    else:
-        st.info("النتيجة ستظهر هنا بعد المعالجة.")
+                st.error("حدث خطأ تقني. حاول تقليل النص قليلاً.")
+                st.caption(f"Error details: {e}")
