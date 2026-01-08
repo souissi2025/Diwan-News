@@ -2,37 +2,34 @@ import streamlit as st
 import google.generativeai as genai
 
 # ==========================================
-# 1. التصميم الجمالي (CSS) - حل مشكلة البتر
+# 1. إعداد الصفحة وتصميم العرض
 # ==========================================
-st.set_page_config(page_title="Diwan Editor Pro", layout="wide", page_icon="🎙️")
+st.set_page_config(page_title="Diwan Newsroom", layout="wide", page_icon="🎙️")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; }
     
-    /* صندوق النتائج الاحترافي */
-    .result-box {
-        background-color: #ffffff;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        border-right: 6px solid #0E738A;
-        margin-top: 25px;
-        font-size: 16px;
-        line-height: 1.8;
-        color: #2c3e50;
-        white-space: pre-wrap; /* يمنع قص النص */
+    /* تصميم منطقة النتيجة لتبدو كورقة تحرير */
+    .news-paper {
+        background-color: #fff;
+        padding: 40px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        font-size: 18px;
+        line-height: 2;
+        color: #000;
     }
     
     .stButton>button {
-        width: 100%; height: 60px; border-radius: 8px;
-        font-weight: bold; background-color: #f8f9fa; border: 1px solid #ddd;
-        transition: 0.3s;
+        width: 100%; height: 60px; font-weight: bold; 
+        background-color: #0E738A; color: white; border: none;
+        border-radius: 8px; transition: 0.3s;
     }
-    .stButton>button:hover {
-        background-color: #0E738A; color: white; border-color: #0E738A;
-    }
+    .stButton>button:hover { background-color: #0b5e70; }
+    
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -48,97 +45,85 @@ except:
     st.stop()
 
 # ==========================================
-# 3. الوظيفة الذكية: البحث عن الموديل (تمنع خطأ 404)
+# 3. دالة ضمان العمل (تجاوز الأخطاء)
 # ==========================================
 def get_working_model():
-    """
-    هذه الدالة لا تخمن الاسم، بل تبحث في القائمة الحقيقية للموديلات
-    وتعيد أول موديل صالح للعمل لتجنب الأخطاء.
-    """
     try:
-        # جلب قائمة الموديلات المتاحة فعلياً من جوجل
-        available_models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                available_models.append(m.name)
-        
-        # ترتيب الأولويات: نحاول الحديث أولاً، ثم القديم
-        priority_list = [
-            'models/gemini-1.5-flash',
-            'models/gemini-1.5-pro',
-            'models/gemini-1.0-pro',
-            'models/gemini-pro'
-        ]
-        
-        # اختيار الأفضل الموجود في القائمة
-        for priority in priority_list:
-            if priority in available_models:
-                return priority
-        
-        # إذا لم نجد المفضلات، نأخذ أول واحد متاح وخلاص
-        if available_models:
-            return available_models[0]
-            
-    except:
-        pass
-    
-    # شبكة أمان أخيرة (اسم الموديل الكلاسيكي)
+        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        # ترتيب الأفضلية للصياغة القوية
+        priority = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
+        for p in priority:
+            if p in available: return p
+        if available: return available[0]
+    except: pass
     return 'gemini-pro'
 
 # ==========================================
-# 4. البرومبت والإعدادات
+# 4. "المحرك التحريري" (السر في الصياغة الاحترافية)
 # ==========================================
-MY_PROMPT = """
-أنت رئيس تحرير محترف في إذاعة ديوان أف أم.
-المهمة: أعد صياغة النص الخام التالي ليصبح خبراً إذاعياً جذاباً.
+# هنا وضعت تعليمات صارمة جداً لضمان الجودة
+EDITORIAL_PROMPT = """
+أنت "كبير المحررين" (Senior Editor) في مؤسسة "ديوان أف أم".
+المهمة: تحويل النص الخام المدخل إلى مادة إخبارية مكتملة، رصينة، وجاهزة للنشر.
 
-القواعد:
-1. صياغة إبداعية، سلسة، وقوية (السهل الممتنع).
-2. حذف الحشو (تم، قام، الجدير بالذكر).
-3. حذف الألقاب والعبارات الإنشائية.
-4. تقسيم النص لفقرات واضحة.
+⚠️ قائمة الممنوعات (Strictly Forbidden):
+1. يمنع تماماً استخدام مقدمات المحادثة (مثل: "حسناً"، "إليك النص"، "بصفتي..").
+2. يمنع استخدام عبارات الحشو الصحفي القديمة (مثل: "مما لا شك فيه"، "الجدير بالذكر"، "تجدر الإشارة").
+3. يمنع استخدام صيغ المبني للمجهول الضعيفة (مثل: "تم الذهاب") واستبدلها بالفعل المباشر (مثل: "ذهب").
+4. لا تضع خاتمة إنشائية (مثل: "وفي الختام نأمل...").
+
+✅ معايير الصياغة الاحترافية (Guidelines):
+1. العنوان: صغ عنواناً إخبارياً ذكياً (فعل + فاعل) لا يتجاوز 8 كلمات.
+2. المقدمة (Lead): ابدأ بأقوى معلومة في النص تجيب عن (من؟ وماذا؟).
+3. الجسم: رتب التفاصيل حسب الأهمية (الهرم المقلوب).
+4. اللغة: عربية فصحى حديثة (White Arabic)، قوية، خالية من التعقيد، وسلسة القراءة.
+5. التنسيق: افصل بين الفقرات بشكل واضح.
+
+النتيجة المطلوبة: الخبر فقط (العنوان + المتن).
 """
 
-# رفع درجة الإبداع
-config = {
-    "temperature": 0.8,
-    "max_output_tokens": 2048,
-}
-
 # ==========================================
-# 5. الواجهة والتنفيذ
+# 5. الواجهة
 # ==========================================
-st.title("🎙️ Diwan Smart Editor")
-st.caption("Auto-Detect Model System")
+st.title("🎙️ Diwan Newsroom Pro")
+st.caption("نظام التحرير الصحفي المتقدم")
 
-col_input, col_info = st.columns([3, 1])
+col1, col2 = st.columns(2)
 
-with col_input:
-    input_text = st.text_area("النص الخام:", height=180, placeholder="أدخل النص هنا...")
+with col1:
+    st.markdown("### 📥 النص الخام")
+    input_text = st.text_area("ضع مسودة الخبر هنا:", height=450, placeholder="أدخل النقاط الرئيسية أو النص العشوائي...")
     
-    if st.button("🚀 معالجة النص (تنفيذ)", type="primary"):
+    if st.button("✨ تحرير وتدقيق احترافي"):
         if input_text:
-            with st.spinner('جاري البحث عن الموديل المناسب والصياغة...'):
-                try:
-                    # 1. اكتشاف الموديل الصالح
-                    model_name = get_working_model()
-                    
-                    # 2. إنشاء الموديل
-                    model = genai.GenerativeModel(model_name, generation_config=config)
-                    
-                    # 3. التوليد
-                    response = model.generate_content(f"{MY_PROMPT}\n\nالنص:\n{input_text}")
-                    
-                    # 4. العرض
-                    st.markdown(f'<div class="result-box">{response.text}</div>', unsafe_allow_html=True)
-                    st.toast(f"تم استخدام الموديل: {model_name}", icon="✅")
-                    
-                except Exception as e:
-                    st.error(f"حدث خطأ غير متوقع: {e}")
-                    st.info("نصيحة: جرب تقليل طول النص قليلاً.")
+            st.session_state.processing = True
         else:
             st.warning("الرجاء إدخال نص.")
 
-with col_info:
-    st.success("✅ النظام يعمل")
-    st.caption("يقوم النظام تلقائياً باختيار الموديل المتوفر في الخادم لتجنب أخطاء الاتصال.")
+with col2:
+    st.markdown("### 📰 النص المعدل (النتيجة)")
+    
+    # حاوية النتيجة
+    if st.session_state.get('processing') and input_text:
+        with st.spinner('جاري تطبيق المعايير التحريرية...'):
+            try:
+                # إعداد الموديل
+                model_name = get_working_model()
+                # حرارة 0.6 تعطي توازناً مثالياً بين الإبداع والالتزام بالقواعد
+                model = genai.GenerativeModel(model_name, generation_config={"temperature": 0.6})
+                
+                # المعالجة
+                full_request = f"{EDITORIAL_PROMPT}\n\nالنص للمعالجة:\n{input_text}"
+                response = model.generate_content(full_request)
+                
+                # عرض النتيجة بتنسيق الورقة الصحفية
+                st.markdown(f'<div class="news-paper">{response.text}</div>', unsafe_allow_html=True)
+                
+                # زر نسخ سريع
+                st.code(response.text, language=None)
+                st.caption("✅ تمت الصياغة وفق معايير ديوان أف أم.")
+                
+            except Exception as e:
+                st.error("حدث خطأ في الاتصال، حاول مجدداً.")
+    else:
+        st.info("النتيجة ستظهر هنا بعد المعالجة.")
