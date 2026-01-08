@@ -1,9 +1,10 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. إعداد الصفحة ---
+# --- 1. الإعدادات ---
 st.set_page_config(page_title="Diwan Newsroom", layout="wide", page_icon="🎙️")
 
+# تصميم الأزرار
 st.markdown("""
 <style>
     .stButton>button {
@@ -15,7 +16,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. الاتصال بالمفتاح ---
+# --- 2. المفتاح ---
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
@@ -41,7 +42,7 @@ if 'mode' not in st.session_state:
 
 def set_mode(m): st.session_state.mode = m
 
-# الأزرار
+# الأزرار العلوية
 c1, c2, c3 = st.columns(3)
 with c1:
     if st.button("📝 صياغة مقال"): set_mode("article")
@@ -64,7 +65,7 @@ titles_map = {
 current_mode = st.session_state.mode
 st.header(titles_map[current_mode])
 
-# الفورم
+# >> هنا الإصلاح النهائي: استخدام Flash داخل الفورم <<
 with st.form("my_form"):
     text_input = st.text_area("أدخل النص أو التاريخ:", height=200)
     submitted = st.form_submit_button("🚀 تنفيذ المهمة")
@@ -75,13 +76,23 @@ with st.form("my_form"):
         else:
             st.info("⏳ جاري العمل...")
             try:
-                # هنا التعديل: استخدام الموديل الكلاسيكي المضمون
-                model = genai.GenerativeModel('gemini-pro')
+                # نستخدم الموديل الذي نجح في التشخيص (flash)
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 response = model.generate_content(
                     f"{PROMPTS[current_mode]}\n\nالنص:\n{text_input}"
                 )
                 st.success("✅ النتيجة:")
                 st.markdown(response.text)
+                
             except Exception as e:
-                st.error(f"❌ خطأ: {e}")
+                # في حال فشل flash لسبب ما، نحاول استخدام الاسم الكامل
+                try:
+                    model_backup = genai.GenerativeModel('models/gemini-1.5-flash')
+                    response = model_backup.generate_content(
+                        f"{PROMPTS[current_mode]}\n\nالنص:\n{text_input}"
+                    )
+                    st.success("✅ النتيجة (احتياط):")
+                    st.markdown(response.text)
+                except Exception as e2:
+                    st.error(f"❌ خطأ: {e}")
