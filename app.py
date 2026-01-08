@@ -2,214 +2,253 @@ import streamlit as st
 import google.generativeai as genai
 
 # ==========================================
-# 1. التصميم الجمالي (UI/UX) - لوحة القيادة
+# 1. إعداد الصفحة
 # ==========================================
-st.set_page_config(page_title="Diwan Newsroom OS", layout="wide", page_icon="🎙️")
+st.set_page_config(page_title="Diwan Smart Editor", layout="wide", page_icon="🎙️")
 
+# ==========================================
+# 2. التصميم المطابق للصورة (CSS High-End)
+# ==========================================
 st.markdown("""
 <style>
+    /* استيراد خط كايرو */
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap');
     
-    html, body, [class*="css"] { 
-        font-family: 'Cairo', sans-serif; 
-        direction: rtl; 
-        background-color: #f8f9fa;
+    /* 1. الخلفية العامة (Teal Background) */
+    .stApp {
+        background-color: #008CA0; /* لون الخلفية الفيروزي */
+        font-family: 'Cairo', sans-serif;
     }
     
-    /* تنسيق الأزرار كأيقونات تطبيقات */
-    .stButton>button {
-        width: 100%; 
-        height: 90px; 
-        border-radius: 12px;
-        border: 1px solid #e0e0e0;
-        background-color: white;
-        color: #333;
-        font-size: 18px; 
+    /* إخفاء القوائم العلوية */
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+
+    /* 2. تصميم الهيدر (الشعار) */
+    .header-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-top: 20px;
+    }
+    .logo-box {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        padding: 10px 40px;
+        border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.2);
+        text-align: center;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .logo-text-main { font-size: 30px; font-weight: 800; }
+    .logo-text-sub { font-size: 13px; opacity: 0.9; letter-spacing: 1px; }
+    .orange-box {
+        background-color: #D95F18;
+        color: white;
+        font-weight: bold;
+        padding: 5px 15px;
+        border-radius: 8px;
+        font-size: 24px;
+    }
+
+    /* 3. تصميم الأزرار (Navigation) */
+    div.stButton > button {
+        width: 100%;
+        height: 110px; /* زيادة الطول قليلاً ليناسب النص */
+        border-radius: 15px;
+        border: 1px solid rgba(255,255,255,0.2);
+        font-family: 'Cairo', sans-serif;
+        font-size: 15px; /* حجم خط مناسب */
         font-weight: 700;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        line-height: 1.2;
+        padding: 10px;
+    }
+
+    /* الحالة العادية (غير نشط): شفاف */
+    div.stButton > button[kind="secondary"] {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        backdrop-filter: blur(5px);
+    }
+    div.stButton > button[kind="secondary"]:hover {
+        background-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* الحالة النشطة (Active): أبيض ونص برتقالي */
+    div.stButton > button[kind="primary"] {
+        background-color: #ffffff !important;
+        color: #D95F18 !important;
+        border: none;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        transform: translateY(-5px);
     }
     
-    .stButton>button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        border-color: #0E738A;
-        color: #0E738A;
+    /* تكبير الأيقونات */
+    div.stButton > button p {
+        font-size: 26px; 
+        margin-bottom: 5px;
+    }
+
+    /* 4. صندوق المحتوى (Input Card) */
+    .input-card {
+        background-color: white;
+        border-radius: 25px;
+        padding: 30px;
+        margin-top: 30px;
+        min-height: 450px;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    }
+    .input-label {
+        color: #888;
+        font-size: 13px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        text-align: right;
+        letter-spacing: 0.5px;
     }
     
-    /* تنسيق ورقة النتيجة */
-    .result-card {
-        background-color: #fff;
-        padding: 40px;
-        border-radius: 15px;
-        border-top: 6px solid #D95F18; /* برتقالي ديوان */
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        font-size: 18px;
-        line-height: 2.2;
-        color: #1a1a1a;
-        margin-top: 20px;
-        white-space: pre-wrap;
+    /* تحسين منطقة النص */
+    .stTextArea textarea {
+        background-color: #f7f9fc;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        padding: 20px;
+        font-size: 16px;
+        color: #333;
+    }
+    .stTextArea textarea:focus {
+        border-color: #D95F18;
+        box-shadow: 0 0 0 1px #D95F18;
     }
     
-    /* عناوين الأقسام */
-    h1, h2, h3 { color: #0E738A; }
-    
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;}
+    /* ضبط المسافات بين الأعمدة */
+    [data-testid="column"] { padding: 0 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. الاتصال بالمفتاح
+# 3. الهيدر (الشعار)
+# ==========================================
+st.markdown("""
+<div class="header-container">
+    <div class="logo-box">
+        <div class="orange-box">D</div>
+        <div>
+            <div class="logo-text-main">ديوان أف أم</div>
+            <div class="logo-text-sub">SMART NEWSROOM EDITOR</div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 4. منطق التنقل والأزرار
+# ==========================================
+if 'page' not in st.session_state:
+    st.session_state.page = 'article' # الافتراضي
+
+def set_page(page_name):
+    st.session_state.page = page_name
+
+# تعريف الأزرار بالتسميات الحرفية من الصورة
+# الترتيب في القائمة: من اليسار إلى اليمين (حسب ظهورها في الشاشة)
+buttons_data = [
+    {"id": "event", "label": "حدث في مثل\nهذا اليوم", "icon": "📅"},
+    {"id": "quotes", "label": "أهم التصريحات", "icon": "💬"},
+    {"id": "flash", "label": "موجز إذاعي", "icon": "📻"},
+    {"id": "audio", "label": "من صوت لنص", "icon": "🎙️"},
+    {"id": "titles", "label": "صانع العناوين", "icon": "T"},
+    {"id": "web", "label": "تحرير الويب", "icon": "✨"},
+    {"id": "article", "label": "صياغة المقال", "icon": "📄"},
+]
+
+# رسم الأزرار
+cols = st.columns(len(buttons_data))
+
+for i, btn in enumerate(buttons_data):
+    with cols[i]:
+        is_active = (st.session_state.page == btn['id'])
+        btn_type = "primary" if is_active else "secondary"
+        
+        if st.button(f"{btn['icon']}\n{btn['label']}", key=btn['id'], type=btn_type, use_container_width=True):
+            set_page(btn['id'])
+            st.rerun()
+
+# ==========================================
+# 5. منطق المعالجة (Gemini)
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 except:
-    st.error("⚠️ المفتاح مفقود.")
-    st.stop()
+    pass # سيتم التعامل مع الخطأ عند التنفيذ
 
-# ==========================================
-# 3. الموديل الذكي
-# ==========================================
-def get_model():
-    target = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
-    try:
-        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        for t in target:
-            if t in available: return t
-        if available: return available[0]
-    except: pass
-    return 'gemini-pro'
-
-# ==========================================
-# 4. الدستور التونسي (يُطبق على كل الأنماط)
-# ==========================================
-# هذه القواعد ستضاف أوتوماتيكياً لكل زر تضغطه
-COMMON_RULES = """
-🛑 قواعد التحرير الإلزامية (Tunisian Standards):
-1. **الأسماء:** حذف الألقاب (السيد، السيدة) والاكتفاء بالصفة والاسم.
-2. **التواريخ:** استخدام الأشهر التونسية حصراً (جانفي، فيفري، مارس، أفريل، ماي، جوان، جويلية، أوت، سبتمبر، أكتوبر، نوفمبر، ديسمبر).
-3. **العملة:** عند ذكر عملة أجنبية، أضف فوراً المقابل التقريبي بالدينار التونسي بين قوسين.
-4. **الأسلوب:** هرم مقلوب (الأهم أولاً)، لغة قوية، ربط ذكي بين الفقرات.
-5. **التوقيع:** ابدأ بـ **(تونس - ديوان أف أم)**.
+# البرومبتات المخصصة لكل زر (مع الالتزام بالمعايير التونسية)
+TUNISIAN_RULES = """
+قواعد التحرير التونسية:
+1. استخدم الأشهر التونسية (جانفي، فيفري...).
+2. احذف الألقاب (السيد/السيدة).
+3. حول العملات للدينار التونسي.
+4. ابدأ بـ (تونس - ديوان أف أم).
 """
 
-# ==========================================
-# 5. القوالب الخاصة بكل زر
-# ==========================================
-PROMPTS = {
-    "article": f"""
-    المهمة: تحرير "خبر إذاعي رئيسي" (Main News Article).
-    {COMMON_RULES}
-    - التنسيق: عنوان رئيسي + متن الخبر مقسم لفقرات مترابطة.
-    """,
-    
-    "web": f"""
-    المهمة: تحرير "مقال للموقع الإلكتروني" (Web/SEO).
-    {COMMON_RULES}
-    - العنوان: يجب أن يكون جذاباً جداً (Viral) ويحتوي على فعل.
-    - الهيكل: فقرات قصيرة جداً (للموبايل).
-    - في النهاية: اقترح 3 وسوم (Hashtags).
-    """,
-    
-    "flash": f"""
-    المهمة: صياغة "موجز أخبار" (Flash Info).
-    {COMMON_RULES}
-    - شرط إضافي: النص يجب أن يكون قصيراً جداً ومكثفاً (لا يتجاوز 60 كلمة).
-    - جمل بسيطة للقراءة السريعة.
-    """,
-    
-    "analysis": f"""
-    المهمة: كتابة "ورقة تحليلية" (Background & Analysis).
-    {COMMON_RULES}
-    - اشرح خلفيات الحدث، السياق القانوني، وماذا يعني هذا القرار.
-    - اربط الأحداث السابقة بالحالية.
-    """,
-    
-    "titles": f"""
-    المهمة: اقتراح "عناوين بديلة".
-    {COMMON_RULES}
-    - اقترح 5 عناوين متنوعة (رسمي، تساؤلي، مثير، اقتباس، عاجل).
-    - لا تكتب مقالاً، فقط العناوين.
-    """
+prompts = {
+    "article": f"أنت صحفي. أعد صياغة النص ليكون خبراً رئيسياً متكاملاً.\n{TUNISIAN_RULES}",
+    "web": f"أنت محرر ويب. أعد صياغة النص لموقع إلكتروني (SEO) مع عنوان جذاب وفقرات قصيرة.\n{TUNISIAN_RULES}",
+    "titles": f"اقترح 5 عناوين احترافية متنوعة (رسمي، فيسبوك، تساؤلي).\n{TUNISIAN_RULES}",
+    "flash": f"لخص النص في موجز إخباري سريع لا يتجاوز 50 كلمة.\n{TUNISIAN_RULES}",
+    "quotes": f"استخرج أهم التصريحات الواردة في النص على لسان أصحابها.\n{TUNISIAN_RULES}",
+    "event": f"ابحث في السياق التاريخي: ماذا حدث في مثل هذا اليوم مرتبطاً بموضوع النص أو التاريخ المذكور؟",
+    "audio": f"قم بتحسين النص المفرغ صوتياً (تصحيح الأخطاء وتحويله لنص مقروء).\n{TUNISIAN_RULES}"
 }
 
+curr_mode = st.session_state.page
+curr_prompt = prompts.get(curr_mode, "")
+curr_label = next((b['label'].replace('\n', ' ') for b in buttons_data if b['id'] == curr_mode), "")
+
 # ==========================================
-# 6. واجهة المستخدم (The Dashboard)
+# 6. منطقة العمل (Input Card)
 # ==========================================
-st.title("🎙️ Diwan Newsroom OS")
-st.caption("نظام التحرير الذكي المتكامل")
+st.markdown('<div class="input-card">', unsafe_allow_html=True)
+st.markdown(f'<div class="input-label">📎 المصدر (INPUT DATA) - {curr_label}</div>', unsafe_allow_html=True)
 
-if 'selected_mode' not in st.session_state: st.session_state.selected_mode = None
-
-# --- شبكة الأزرار (The Grid) ---
-col1, col2, col3, col4, col5 = st.columns(5)
-
-with col1:
-    if st.button("📰 خبر رئيسي"): st.session_state.selected_mode = "article"
-with col2:
-    if st.button("🌐 ويب (SEO)"): st.session_state.selected_mode = "web"
-with col3:
-    if st.button("⚡ موجز"): st.session_state.selected_mode = "flash"
-with col4:
-    if st.button("🔍 تحليل"): st.session_state.selected_mode = "analysis"
-with col5:
-    if st.button("🏷️ عناوين"): st.session_state.selected_mode = "titles"
-
-# --- منطقة العمل ---
-st.markdown("---")
-
-if st.session_state.selected_mode:
-    # عرض اسم الوضع الحالي
-    mode_names = {
-        "article": "تحرير خبر رئيسي",
-        "web": "مقال للموقع الإلكتروني",
-        "flash": "موجز سريع",
-        "analysis": "تحليل وسياق",
-        "titles": "ورشة العناوين"
-    }
-    current_title = mode_names[st.session_state.selected_mode]
+with st.container():
+    # مربع النص
+    input_text = st.text_area("input_area", height=200, label_visibility="collapsed", placeholder="أدخل النص أو رؤوس الأقلام هنا...")
     
-    st.subheader(f"📌 الوضع الحالي: {current_title}")
-    
-    # تقسيم الشاشة: مدخلات ومخرجات
-    c_in, c_out = st.columns([1, 1.2])
-    
-    with c_in:
-        input_text = st.text_area("النص الخام:", height=500, placeholder="ضع النص هنا...")
-        run_btn = st.button(f"🚀 تنفيذ ({current_title})", type="primary")
+    # فاصل وزر التنفيذ
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2 = st.columns([1, 4])
+    with c1:
+        run_btn = st.button("🚀 معالجة فورية", type="primary", key="run_main")
 
-    with c_out:
-        result_placeholder = st.empty()
-        
-        if run_btn and input_text:
+    # عرض النتائج
+    if run_btn and input_text:
+        st.markdown("---")
+        with st.spinner('جاري المعالجة الذكية...'):
             try:
-                # تحضير الموديل
-                model_name = get_model()
-                # حرارة 0.7 توازن ممتاز بين الإبداع والالتزام بالقواعد التونسية
-                config = {"temperature": 0.7, "max_output_tokens": 8192}
-                model = genai.GenerativeModel(model_name, generation_config=config)
+                # استخدام Gemini Pro 1.5 أو المتوفر
+                model = genai.GenerativeModel('gemini-pro') 
+                response = model.generate_content(f"{curr_prompt}\n\nالنص الخام:\n{input_text}")
                 
-                # جلب البرومبت المناسب
-                final_prompt = PROMPTS[st.session_state.selected_mode]
-                
-                # التنفيذ (Streaming)
-                response = model.generate_content(
-                    f"{final_prompt}\n\nالنص الخام:\n{input_text}",
-                    stream=True
-                )
-                
-                # العرض المباشر
-                full_text = ""
-                for chunk in response:
-                    if chunk.text:
-                        full_text += chunk.text
-                        result_placeholder.markdown(f'<div class="result-card">{full_text}</div>', unsafe_allow_html=True)
-                
-                st.toast("✅ تمت المعالجة بنجاح", icon="🇹🇳")
+                # عرض النتيجة بتنسيق نظيف
+                st.markdown(f"""
+                <div style="font-size:18px; line-height:2.2; color:#333; white-space: pre-wrap;">
+                {response.text}
+                </div>
+                """, unsafe_allow_html=True)
                 
             except Exception as e:
-                st.error("حدث خطأ تقني.")
-                st.write(e)
-else:
-    st.info("👈 اختر نوع التحرير من الأزرار أعلاه للبدء.")
+                st.error("حدث خطأ في الاتصال، يرجى المحاولة مجدداً.")
+
+st.markdown('</div>', unsafe_allow_html=True)
