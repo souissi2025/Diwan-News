@@ -82,7 +82,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. محرك الذكاء الاصطناعي (مع تصحيح الموديلات)
+# 3. محرك الذكاء الاصطناعي (Stable Version)
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -90,21 +90,19 @@ try:
 except:
     st.error("⚠️ المفتاح مفقود.")
 
-def generate_with_retry_rotation(prompt, input_text):
+def generate_safe_content(prompt, input_text):
     """
-    دالة ذكية تقوم بتجربة عدة موديلات بالتتابع
-    تم حذف الموديلات التي تسبب مشاكل 404
+    دالة آمنة تستخدم فقط الموديلات المستقرة (Version 1.5)
+    وتبتعد عن الموديلات القديمة التي تسبب مشاكل
     """
-    # القائمة المستقرة فقط (Stable Models Only)
-    models_pool = [
-        'gemini-1.5-flash', # الخيار الأول: سريع جداً ومستقر
-        'gemini-1.5-pro',   # الخيار الثاني: ذكي جداً
-        'gemini-pro'        # الخيار الثالث: الاحتياطي القديم
-    ]
+    # قائمة الموديلات المضمونة فقط
+    # 1. Flash: سريع ومجاني
+    # 2. Pro: ذكي واحتياطي
+    safe_models = ['gemini-1.5-flash', 'gemini-1.5-pro']
     
     last_error = None
     
-    for model_name in models_pool:
+    for model_name in safe_models:
         try:
             # إعداد الموديل
             gen_config = {"temperature": 0.7, "max_output_tokens": 8192}
@@ -112,19 +110,18 @@ def generate_with_retry_rotation(prompt, input_text):
             
             # محاولة التوليد
             response = model.generate_content(f"{prompt}\n\nالنص الخام:\n{input_text}", stream=True)
-            return response # نجحنا! نرجع النتيجة فوراً
+            return response # نجاح
             
         except Exception as e:
-            # إذا فشل، نسجل الخطأ وننتقل للموديل التالي
             last_error = e
-            time.sleep(1) # استراحة قصيرة
+            time.sleep(1)
             continue
             
-    # إذا فشلت كل الموديلات
+    # إذا فشل الاثنان (غالباً بسبب الحظر المؤقت 429)
     raise last_error
 
 # ==========================================
-# 4. الهيدر والقائمة
+# 4. الهيدر والأزرار
 # ==========================================
 st.markdown("""
 <div class="header-container">
@@ -196,10 +193,10 @@ with c2:
     process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
 
 if process_btn and input_text:
-    with st.spinner('⏳ جاري الاتصال بالمحرك الذكي...'):
+    with st.spinner('⏳ جاري الاتصال...'):
         try:
-            # استخدام الدالة المستقرة الجديدة
-            response_stream = generate_with_retry_rotation(curr_prompt, input_text)
+            # استخدام الدالة الآمنة الجديدة
+            response_stream = generate_safe_content(curr_prompt, input_text)
             
             st.markdown(f'<div class="section-label" style="margin-top:30px; color:white;">💎 النتيجة النهائية</div>', unsafe_allow_html=True)
             res_placeholder = st.empty()
@@ -212,7 +209,9 @@ if process_btn and input_text:
                     
         except Exception as e:
             if "429" in str(e):
-                st.warning("⚠️ السيرفر مشغول حالياً (Quota Exceeded). يرجى الانتظار دقيقة واحدة والمحاولة.")
+                st.warning("⚠️ جميع الموديلات مشغولة (Quota Exceeded). يرجى الانتظار 40 ثانية.")
+            elif "404" in str(e):
+                st.error("⚠️ خطأ في اسم الموديل، تم استخدام القائمة الآمنة الآن.")
             else:
                 st.error(f"حدث خطأ: {e}")
 
