@@ -82,7 +82,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. دالة الاستكشاف التلقائي للموديل (The Fix)
+# 3. دالة الاستكشاف التلقائي للموديل (مصححة)
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -92,36 +92,31 @@ except:
 
 def get_working_model():
     """
-    هذه الدالة لا تخمن الاسم، بل تسأل جوجل: 'ما هي الموديلات المتاحة لي؟'
-    وتختار أفضل واحد موجود فعلياً.
+    تكتشف الموديل المتاح تلقائياً لتجنب أخطاء 404
     """
     try:
-        # جلب قائمة الموديلات المتاحة للمفتاح
+        # محاولة جلب الموديلات المتاحة
         available_models = []
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
                 available_models.append(m.name)
         
-        # البحث عن الموديلات بالترتيب الأفضل
-        # نبحث عن 1.5 فلاش
+        # البحث عن الموديلات بالترتيب: فلاش ثم برو
         for m in available_models:
             if 'gemini-1.5-flash' in m: return m
-            
-        # إذا لم نجد فلاش، نبحث عن 1.5 برو
+        
         for m in available_models:
             if 'gemini-1.5-pro' in m: return m
             
-        # إذا لم نجد، نبحث عن أي موديل برو
-        for m in available_models:
-            if 'gemini-pro' in m: return m
-            
         # إذا وجدنا أي موديل آخر
-        if available_models: return available_models[0]
-        
-    except Exception as e:
-        return 'models/gemini-1.5-flash' # اسم افتراضي للمحاولة الأخيرة
+        if available_models:
+            return available_models[0]
+            
+    except Exception:
+        # في حال فشل الاتصال بقائمة الموديلات، نعود لاسم افتراضي آمن
+        return 'models/gemini-1.5-flash'
 
-    return 'models/gemini-pro'
+    return 'models/gemini-1.5-flash'
 
 # ==========================================
 # 4. الهيدر والأزرار
@@ -186,19 +181,4 @@ curr_label = next((b['label'].replace('\n', ' ') for b in buttons_data if b['id'
 # ==========================================
 # 6. منطقة العمل
 # ==========================================
-st.markdown(f'<div class="input-card">', unsafe_allow_html=True)
-st.markdown(f'<div class="section-label">📌 النص الخام (INPUT) - {curr_label}</div>', unsafe_allow_html=True)
-input_text = st.text_area("input", height=200, label_visibility="collapsed", placeholder="أدخل النص هنا...")
-st.markdown('</div>', unsafe_allow_html=True)
-
-c1, c2, c3 = st.columns([1, 2, 1]) 
-with c2:
-    process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
-
-if process_btn and input_text:
-    with st.spinner('⏳ جاري البحث عن الموديل والاتصال...'):
-        try:
-            # 1. الخطوة الأهم: اكتشاف اسم الموديل الصحيح تلقائياً
-            model_name = get_working_model()
-            
-            #
+st.markdown(f'
