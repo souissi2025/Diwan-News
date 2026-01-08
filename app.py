@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+import time
 
 # ==========================================
 # 1. إعداد الصفحة
@@ -7,19 +8,13 @@ import google.generativeai as genai
 st.set_page_config(page_title="Diwan Smart Editor", layout="wide", page_icon="🎙️")
 
 # ==========================================
-# 2. التصميم (Google Studio Style + Animations)
+# 2. التصميم (Teal UI + Animations)
 # ==========================================
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
     
-    /* الخلفية العامة */
-    .stApp {
-        background-color: #008CA0; /* الفيروزي */
-        font-family: 'Cairo', sans-serif;
-    }
-    
-    /* إخفاء العناصر الافتراضية */
+    .stApp { background-color: #008CA0; font-family: 'Cairo', sans-serif; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
 
     /* الهيدر */
@@ -28,11 +23,8 @@ st.markdown("""
         margin-bottom: 30px; padding-top: 10px;
     }
     .logo-box {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        padding: 10px 40px;
-        border-radius: 20px;
-        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px);
+        padding: 10px 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2);
         color: white; display: flex; align-items: center; gap: 15px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
@@ -43,85 +35,54 @@ st.markdown("""
         padding: 5px 15px; border-radius: 8px; font-size: 24px;
     }
 
-    /* أزرار التنقل (Navigation) */
+    /* الأزرار */
     div.stButton > button {
-        width: 100%; height: 100px;
-        border-radius: 16px;
+        width: 100%; height: 100px; border-radius: 16px;
         border: 1px solid rgba(255,255,255,0.2);
         font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* حركة ناعمة */
-        display: flex; flex-direction: column;
-        justify-content: center; align-items: center; gap: 8px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;
         padding: 10px;
     }
-
-    /* زر غير نشط */
     div.stButton > button[kind="secondary"] {
-        background-color: rgba(255, 255, 255, 0.1); color: white;
-        backdrop-filter: blur(5px);
+        background-color: rgba(255, 255, 255, 0.1); color: white; backdrop-filter: blur(5px);
     }
     div.stButton > button[kind="secondary"]:hover {
-        background-color: rgba(255, 255, 255, 0.25);
-        transform: translateY(-5px);
+        background-color: rgba(255, 255, 255, 0.25); transform: translateY(-5px);
     }
-
-    /* زر نشط (Active) */
     div.stButton > button[kind="primary"] {
         background-color: #ffffff !important; color: #D95F18 !important;
-        border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        transform: scale(1.05); /* تكبير بسيط */
+        border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: scale(1.05);
     }
     div.stButton > button p { font-size: 24px; margin-bottom: 5px; }
 
-    /* صندوق الإدخال (INPUT - في الأعلى) */
+    /* المدخلات والمخرجات */
     .input-card {
-        background-color: white; border-radius: 20px;
-        padding: 25px; margin-top: 20px; margin-bottom: 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background-color: white; border-radius: 20px; padding: 25px;
+        margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     .section-label {
         color: #888; font-size: 12px; font-weight: 800;
         margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
     }
-    
-    /* صندوق النتيجة (OUTPUT - في الأسفل) - ستايل جوجل ستوديو */
     .result-card {
-        background-color: #f0f4f9; /* رمادي فاتح جداً مثل جوجل */
-        border-radius: 20px;
-        padding: 35px;
-        margin-top: 20px;
-        font-size: 18px; line-height: 2.2; color: #1f1f1f;
-        white-space: pre-wrap;
-        box-shadow: inset 0 2px 10px rgba(0,0,0,0.02); /* ظل داخلي خفيف */
-        border: 1px solid #e0e0e0;
+        background-color: #f0f4f9; border-radius: 20px; padding: 35px; margin-top: 20px;
+        font-size: 18px; line-height: 2.2; color: #1f1f1f; white-space: pre-wrap;
+        box-shadow: inset 0 2px 10px rgba(0,0,0,0.02); border: 1px solid #e0e0e0;
         font-family: 'Cairo', sans-serif;
     }
-
-    /* تأثير الحركية على زر المعالجة */
-    @keyframes pulse-orange {
-        0% { box-shadow: 0 0 0 0 rgba(217, 95, 24, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(217, 95, 24, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(217, 95, 24, 0); }
-    }
     
-    /* تخصيص زر "معالجة فورية" */
-    .stButton button:active {
-        animation: pulse-orange 1s;
-    }
-
-    /* تحسين شكل Text Area */
     .stTextArea textarea {
         background-color: #f8f9fa; border: 1px solid #e0e0e0;
         border-radius: 12px; padding: 15px; font-size: 16px; color: #333;
     }
     .stTextArea textarea:focus { border-color: #D95F18; outline: none; }
-    
     [data-testid="column"] { padding: 0 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. الاتصال والموديل
+# 3. محرك الذكاء الاصطناعي (مع نظام تجاوز الخطأ 429)
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -129,18 +90,42 @@ try:
 except:
     st.error("⚠️ المفتاح مفقود.")
 
-def get_best_model():
-    try:
-        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        priority = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
-        for p in priority:
-            if p in available: return p
-        if available: return available[0]
-    except: pass
-    return 'gemini-pro'
+def generate_with_retry_rotation(prompt, input_text):
+    """
+    دالة ذكية تقوم بتجربة عدة موديلات بالتتابع لتجاوز خطأ الحصة (Quota Exceeded)
+    """
+    # قائمة الموديلات مرتبة من الأسرع والأرخص إلى الأقوى
+    # نبدأ بـ Flash لأنه الأسرع ولديه حصة أكبر عادة
+    models_pool = [
+        'models/gemini-1.5-flash',
+        'models/gemini-1.5-pro',
+        'models/gemini-pro',
+        'models/gemini-1.5-flash-latest'
+    ]
+    
+    last_error = None
+    
+    for model_name in models_pool:
+        try:
+            # محاولة التوليد بالموديل الحالي
+            gen_config = {"temperature": 0.7, "max_output_tokens": 8192}
+            model = genai.GenerativeModel(model_name, generation_config=gen_config)
+            
+            # نستخدم stream=True لسرعة الاستجابة
+            response = model.generate_content(f"{prompt}\n\nالنص الخام:\n{input_text}", stream=True)
+            return response # نجحنا! نرجع النتيجة فوراً
+            
+        except Exception as e:
+            # إذا فشل، نسجل الخطأ وننتقل للموديل التالي في القائمة
+            last_error = e
+            time.sleep(1) # راحة ثانية واحدة قبل المحاولة التالية
+            continue
+            
+    # إذا فشلت كل الموديلات
+    raise last_error
 
 # ==========================================
-# 4. الهيدر والقائمة (تم حذف تحرير الويب)
+# 4. الهيدر والقائمة
 # ==========================================
 st.markdown("""
 <div class="header-container">
@@ -155,17 +140,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if 'page' not in st.session_state: st.session_state.page = 'article'
-
 def set_page(p): st.session_state.page = p
 
-# القائمة الجديدة (6 أزرار فقط - بدون الويب)
 buttons_data = [
     {"id": "event", "label": "حدث في مثل\nهذا اليوم", "icon": "📅"},
     {"id": "quotes", "label": "أهم التصريحات", "icon": "💬"},
     {"id": "flash", "label": "موجز إذاعي", "icon": "📻"},
     {"id": "audio", "label": "من صوت لنص", "icon": "🎙️"},
     {"id": "titles", "label": "صانع العناوين", "icon": "T"},
-    # تم حذف تحرير الويب
     {"id": "article", "label": "صياغة المقال", "icon": "📄"},
 ]
 
@@ -182,7 +164,7 @@ for i, btn in enumerate(buttons_data):
 # ==========================================
 TUNISIAN_RULES = """
 🛑 قواعد إلزامية (Tunisian Style):
-1. التقويم: استخدم الأشهر التونسية (جانفي، فيفري، مارس...).
+1. التقويم: استخدم الأشهر التونسية (جانفي، فيفري...).
 2. الأسماء: حذف الألقاب (السيد/السيدة) والاكتفاء بالصفة والاسم.
 3. العملة: ذكر المقابل بالدينار التونسي.
 4. التوقيع: ابدأ بـ (تونس - ديوان أف أم).
@@ -203,50 +185,38 @@ curr_prompt = prompts.get(curr_mode, "")
 curr_label = next((b['label'].replace('\n', ' ') for b in buttons_data if b['id'] == curr_mode), "")
 
 # ==========================================
-# 6. منطقة العمل (ترتيب: نص -> زر -> نتيجة)
+# 6. منطقة العمل
 # ==========================================
-
-# --- 1. القسم العلوي: إدخال النص ---
 st.markdown(f'<div class="input-card">', unsafe_allow_html=True)
 st.markdown(f'<div class="section-label">📌 النص الخام (INPUT) - {curr_label}</div>', unsafe_allow_html=True)
 input_text = st.text_area("input", height=200, label_visibility="collapsed", placeholder="أدخل النص هنا...")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 2. زر المعالجة (في المنتصف) ---
-# نستخدم أعمدة لتصغير حجم الزر ووضعه في الوسط أو الطرف
 c1, c2, c3 = st.columns([1, 2, 1]) 
 with c2:
-    # زر عريض وواضح
     process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
 
-# --- 3. القسم السفلي: النتيجة ---
 if process_btn and input_text:
-    
-    # مؤشر انتظار متحرك (Spinner)
-    with st.spinner('⏳ جاري تحليل النص وصياغته بذكاء...'):
+    with st.spinner('⏳ جاري الاتصال بالمحرك الذكي وتجاوز الانتظار...'):
         try:
-            model_name = get_best_model()
-            cfg = {"temperature": 0.7, "max_output_tokens": 8192}
-            model = genai.GenerativeModel(model_name, generation_config=cfg)
+            # استخدام الدالة الجديدة التي تجرب موديلات مختلفة
+            response_stream = generate_with_retry_rotation(curr_prompt, input_text)
             
-            response = model.generate_content(
-                f"{curr_prompt}\n\nالنص الخام:\n{input_text}", 
-                stream=True
-            )
-            
-            # حاوية النتيجة (بتصميم جوجل ستوديو)
             st.markdown(f'<div class="section-label" style="margin-top:30px; color:white;">💎 النتيجة النهائية</div>', unsafe_allow_html=True)
             res_placeholder = st.empty()
             
             full_text = ""
-            for chunk in response:
+            for chunk in response_stream:
                 if chunk.text:
                     full_text += chunk.text
-                    # تحديث النص داخل الصندوق المصمم
                     res_placeholder.markdown(f'<div class="result-card">{full_text}</div>', unsafe_allow_html=True)
                     
         except Exception as e:
-            st.error(f"حدث خطأ: {e}")
+            # إذا فشلت كل المحاولات، نظهر رسالة لطيفة
+            if "429" in str(e):
+                st.warning("⚠️ الضغط عالٍ جداً على السيرفر المجاني. يرجى الانتظار 30 ثانية ثم المحاولة.")
+            else:
+                st.error(f"حدث خطأ: {e}")
 
 elif process_btn and not input_text:
     st.warning("⚠️ الرجاء إدخال نص أولاً!")
