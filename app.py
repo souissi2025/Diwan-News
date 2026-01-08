@@ -1,10 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. الإعدادات ---
+# --- 1. إعداد الصفحة ---
 st.set_page_config(page_title="Diwan Newsroom", layout="wide", page_icon="🎙️")
-
-# تصميم الأزرار
 st.markdown("""
 <style>
     .stButton>button {
@@ -16,7 +14,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. المفتاح ---
+# --- 2. الاتصال بالمفتاح ---
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
@@ -24,7 +22,19 @@ except:
     st.error("⚠️ المفتاح مفقود.")
     st.stop()
 
-# --- 3. التعليمات ---
+# --- 3. دالة ذكية لاختيار الموديل المتاح ---
+def get_working_model():
+    # قائمة أسماء نحاول معها بالترتيب
+    candidates = [
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-1.0-pro",
+        "gemini-pro"
+    ]
+    # محاولة تجربة الأسماء المعروفة
+    return genai.GenerativeModel("gemini-1.5-flash") # نجرب الفلاش كخيار أول
+
+# --- 4. التعليمات ---
 PROMPTS = {
     "article": "أنت صحفي محترف. أعد صياغة النص كخبر صحفي (الهرم المقلوب). احذف الألقاب. لغة عربية قوية.",
     "web": "أنت خبير SEO. أعد صياغة النص للويب. فقرات قصيرة، كلمات مفتاحية، وعنوان جذاب.",
@@ -34,15 +44,12 @@ PROMPTS = {
     "history": "حدث في مثل هذا اليوم (تونس، ثم العالم). باختصار."
 }
 
-# --- 4. الواجهة ---
+# --- 5. الواجهة ---
 st.title("🎙️ ديوان أف أم - المحرر الذكي")
 
-if 'mode' not in st.session_state:
-    st.session_state.mode = "article"
-
+if 'mode' not in st.session_state: st.session_state.mode = "article"
 def set_mode(m): st.session_state.mode = m
 
-# الأزرار العلوية
 c1, c2, c3 = st.columns(3)
 with c1:
     if st.button("📝 صياغة مقال"): set_mode("article")
@@ -56,7 +63,6 @@ with c3:
 
 st.markdown("---")
 
-# --- 5. منطقة العمل ---
 titles_map = {
     "article": "📝 صياغة مقال صحفي", "web": "✨ تحرير ويب (SEO)",
     "flash": "((●)) موجز إذاعي", "titles": "T اقتراح عناوين",
@@ -65,7 +71,7 @@ titles_map = {
 current_mode = st.session_state.mode
 st.header(titles_map[current_mode])
 
-# >> هنا الإصلاح النهائي: استخدام Flash داخل الفورم <<
+# الفورم والتنفيذ
 with st.form("my_form"):
     text_input = st.text_area("أدخل النص أو التاريخ:", height=200)
     submitted = st.form_submit_button("🚀 تنفيذ المهمة")
@@ -74,25 +80,49 @@ with st.form("my_form"):
         if not text_input:
             st.warning("أدخل نصاً.")
         else:
-            st.info("⏳ جاري العمل...")
+            st.info("⏳ جاري البحث عن أفضل موديل وتنفيذ الطلب...")
+            
             try:
-                # نستخدم الموديل الذي نجح في التشخيص (flash)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # 1. أولاً: نحاول الحصول على قائمة الموديلات المتاحة لك فعلياً
+                available_models = []
+                try:
+                    for m in genai.list_models():
+                        if 'generateContent' in m.supported_generation_methods:
+                            available_models.append(m.name)
+                except:
+                    pass
                 
+                # 2. اختيار موديل من القائمة
+                chosen_model_name = ""
+                if available_models:
+                    # نفضل الفلاش إذا وجدناه
+                    if 'models/gemini-1.5-flash' in available_models:
+                        chosen_model_name = 'gemini-1.5-flash'
+                    elif 'models/gemini-pro' in available_models:
+                        chosen_model_name = 'gemini-pro'
+                    else:
+                        # نأخذ أول واحد متاح وخلاص
+                        chosen_model_name = available_models[0].replace('models/', '')
+                else:
+                    # إذا فشل البحث، نستخدم الفلاش كحل أخير
+                    chosen_model_name = 'gemini-1.5-flash'
+
+                # 3. التنفيذ بالموديل المختار
+                # st.write(f"Testing Model: {chosen_model_name}") # للتجربة
+                
+                model = genai.GenerativeModel(chosen_model_name)
                 response = model.generate_content(
                     f"{PROMPTS[current_mode]}\n\nالنص:\n{text_input}"
                 )
-                st.success("✅ النتيجة:")
+                st.success(f"✅ تم (باستخدام {chosen_model_name}):")
                 st.markdown(response.text)
                 
             except Exception as e:
-                # في حال فشل flash لسبب ما، نحاول استخدام الاسم الكامل
+                st.error(f"❌ فشلت كل المحاولات. الخطأ: {e}")
+                # طباعة القائمة للمساعدة في التشخيص
+                st.write("الموديلات المتاحة في حسابك هي:")
                 try:
-                    model_backup = genai.GenerativeModel('models/gemini-1.5-flash')
-                    response = model_backup.generate_content(
-                        f"{PROMPTS[current_mode]}\n\nالنص:\n{text_input}"
-                    )
-                    st.success("✅ النتيجة (احتياط):")
-                    st.markdown(response.text)
-                except Exception as e2:
-                    st.error(f"❌ خطأ: {e}")
+                    for m in genai.list_models():
+                        st.code(m.name)
+                except:
+                    st.write("غير قادر على جلب القائمة.")
