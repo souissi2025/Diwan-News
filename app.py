@@ -1,126 +1,107 @@
 import streamlit as st
 import google.generativeai as genai
 
-# ==========================================
-# 1. إعدادات الصفحة والتصميم (CSS)
-# ==========================================
+# --- 1. إعداد الصفحة والتصميم (CSS) ---
 st.set_page_config(page_title="Diwan Editor Pro", layout="wide", page_icon="🎙️")
 
-# CSS مخصص لإصلاح العيوب وجعل المظهر احترافياً
 st.markdown("""
 <style>
-    /* استيراد خط عربي أنيق (Cairo) */
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Cairo', sans-serif;
-        direction: rtl;
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+    html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; }
+    
+    /* صندوق النتيجة الجمالي */
+    .result-box {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-right: 8px solid #0E738A;
+        margin-top: 25px;
+        font-size: 16px;
+        line-height: 1.8;
+        color: #2c3e50;
+        white-space: pre-wrap;
     }
-
-    /* تحسين شكل الأزرار */
+    
     .stButton>button {
-        border-radius: 8px;
-        height: 3em;
-        font-weight: bold;
-        border: 1px solid #ddd;
+        width: 100%; height: 60px; border-radius: 10px;
+        font-weight: bold; background-color: #f8f9fa; border: 1px solid #ddd;
         transition: 0.3s;
     }
     .stButton>button:hover {
-        border-color: #0E738A;
-        color: #0E738A;
-        background-color: #f0f8ff;
+        background-color: #0E738A; color: white; border-color: #0E738A;
     }
-
-    /* صندوق النتيجة (الحل لمشكلة البتر والشكل الجمالي) */
-    .result-card {
-        background-color: #ffffff;
-        padding: 25px;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        border-right: 6px solid #0E738A; /* لون هوية ديوان */
-        margin-top: 20px;
-        font-size: 16px;
-        line-height: 1.8;
-        color: #333;
-        white-space: pre-wrap; /* يمنع بتر النص ويحفظ التنسيق */
-    }
-
-    /* تحسين عنوان الصفحة */
-    h1 { color: #0E738A; text-align: center; margin-bottom: 30px; }
-    
-    /* إخفاء القوائم العلوية المزعجة */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. الاتصال (Connection)
-# ==========================================
+# --- 2. الاتصال بالمفتاح ---
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 except:
-    st.error("⚠️ المفتاح مفقود. تأكد من إضافته في Settings -> Secrets")
+    st.error("⚠️ المفتاح مفقود.")
     st.stop()
 
-# ==========================================
-# 3. "البرومبت" الخاص بك (مكان التعديل)
-# ==========================================
-# ضع البرومبت الخاص بك هنا بين علامات التنصيص الثلاثية
-MASTER_PROMPT = """
-أنت صحفي وخبير تحرير في إذاعة "ديوان أف أم".
-دورك: إعادة صياغة النص المدخل ليصبح مادة صحفية احترافية وجاهزة للنشر.
+# --- 3. البرومبت (ضع نصك هنا) ---
+# يمكنك تعديل هذا النص بما يناسبك
+MY_PROMPT = """
+أنت صحفي محترف (Editor-in-Chief) في إذاعة ديوان أف أم.
+مهمتك: إعادة صياغة النص الخام التالي ليصبح خبراً إذاعياً احترافياً وجذاباً.
 
 القواعد الصارمة:
-1. استخدم لغة عربية فصحى، قوية، وسلسة (السهل الممتنع).
-2. ابتعد عن الحشو (مثل: مما لا شك فيه، وتجدر الإشارة).
-3. احذف الألقاب التفخيمية واكتفِ بالصفة الوظيفية والاسم.
-4. استخدم أسلوب "الهرم المقلوب": المعلومة الأهم أولاً.
-5. قسّم النص إلى فقرات قصيرة ومريحة للعين.
-
-المطلوب: صياغة النص بشكل متكامل، مع وضع عنوان مقترح في البداية.
+1. استخدم لغة عربية فصحى قوية وسلسة (السهل الممتنع).
+2. تجنب التكرار والحشو (مثل: تم، قام، الجدير بالذكر).
+3. استبدل الألقاب بالصفات الوظيفية.
+4. ابدأ بالمعلومة الأهم (Lead).
+5. اجعل النص مقسماً لفقرات قصيرة.
 """
 
-# ==========================================
-# 4. واجهة التطبيق (UI)
-# ==========================================
+# --- 4. إعدادات الموديل (رفع الحرارة) ---
+# هنا قمنا برفع الحرارة إلى 0.8 لزيادة الإبداع وجودة الصياغة
+generation_config = {
+    "temperature": 0.8,
+    "top_p": 0.95,
+    "top_k": 64,
+    "max_output_tokens": 2000,
+}
+
+# --- 5. الواجهة ---
 st.title("🎙️ Diwan Smart Editor")
+st.caption("الإصدار الاحترافي (High Creativity Mode)")
 
-# تقسيم الصفحة لعمودين (للمظهر الجمالي)
-c1, c2 = st.columns([3, 1])
+col_input, col_help = st.columns([3, 1])
 
-with c1:
-    # منطقة الإدخال
-    input_text = st.text_area("النص الخام (المدخلات):", height=200, placeholder="أدخل النص أو رؤوس الأقلام هنا...")
+with col_input:
+    input_text = st.text_area("النص الخام:", height=180, placeholder="أدخل النص هنا...")
     
-    # زر التنفيذ
-    if st.button("🚀 معالجة النص وتحسينه", type="primary"):
+    if st.button("🚀 صياغة إبداعية (تنفيذ)", type="primary"):
         if input_text:
-            with st.spinner('جاري الصياغة والتحرير...'):
+            with st.spinner('جاري الصياغة بلمسة إبداعية...'):
                 try:
-                    # اختيار الموديل تلقائياً (تجاوز أخطاء 404)
-                    try:
-                        model = genai.GenerativeModel('gemini-1.5-flash')
-                    except:
-                        model = genai.GenerativeModel('gemini-pro')
-
-                    # إرسال الطلب
-                    response = model.generate_content(f"{MASTER_PROMPT}\n\nالنص للمعالجة:\n{input_text}")
+                    # اختيار الموديل مع تطبيق إعدادات الحرارة
+                    model = genai.GenerativeModel(
+                        model_name='gemini-1.5-flash',
+                        generation_config=generation_config
+                    )
                     
-                    # عرض النتيجة داخل الصندوق الجمالي (HTML Box)
-                    st.markdown(f"""
-                        <div class="result-card">
-                            {response.text}
-                        </div>
-                    """, unsafe_allow_html=True)
+                    full_prompt = f"{MY_PROMPT}\n\nالنص:\n{input_text}"
+                    response = model.generate_content(full_prompt)
+                    
+                    # عرض النتيجة
+                    st.markdown(f'<div class="result-box">{response.text}</div>', unsafe_allow_html=True)
                     
                 except Exception as e:
-                    st.error(f"حدث خطأ تقني: {e}")
+                    # محاولة احتياطية
+                    try:
+                        model_old = genai.GenerativeModel('gemini-pro', generation_config=generation_config)
+                        response = model_old.generate_content(full_prompt)
+                        st.markdown(f'<div class="result-box">{response.text}</div>', unsafe_allow_html=True)
+                    except:
+                         st.error(f"خطأ تقني: {e}")
         else:
-            st.warning("الرجاء إدخال نص للمعالجة.")
+            st.warning("الرجاء كتابة نص أولاً.")
 
-with c2:
-    # معلومات جانبية
-    st.info("💡 **نصائح:**\n\n- للحصول على أفضل نتيجة، وفر تفاصيل واضحة.\n- هذا النظام يستخدم القواعد التحريرية الخاصة بالإذاعة.")
-    st.image("https://cdn-icons-png.flaticon.com/512/2965/2965879.png", width=100)
+with col_help:
+    st.info("🔥 **ملاحظة:**\nتم رفع درجة 'إبداع الموديل' (Temperature) إلى 0.8 للحصول على صياغة أقل جموداً وأكثر احترافية.")
