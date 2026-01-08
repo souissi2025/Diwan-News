@@ -2,55 +2,37 @@ import streamlit as st
 import google.generativeai as genai
 
 # ==========================================
-# 1. تصميم الموقع وغرفة العناوين
+# 1. إعداد الصفحة (Google Studio Style)
 # ==========================================
-st.set_page_config(page_title="Diwan Web Editor + Titles", layout="wide", page_icon="🌐")
+st.set_page_config(page_title="Diwan AI Studio", layout="wide", page_icon="✨")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;900&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; }
     
-    /* تصميم المقال */
-    .article-box {
-        background-color: #fff;
-        padding: 40px;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        margin-bottom: 25px;
-    }
-    
-    .article-title {
-        color: #111; font-size: 24px; font-weight: 900;
-        margin-bottom: 15px; line-height: 1.4;
-        border-bottom: 2px solid #D95F18; padding-bottom: 15px;
-    }
-    
-    .article-body {
-        font-size: 17px; line-height: 1.9; color: #333;
+    /* محاكاة تصميم النتيجة في جوجل ستوديو */
+    .studio-result {
+        background-color: #f0f4f9; /* لون خلفية جوجل */
+        padding: 35px;
+        border-radius: 12px;
+        border: none;
+        font-size: 17px;
+        line-height: 2;
+        color: #1f1f1f;
         white-space: pre-wrap;
     }
     
-    /* تصميم صندوق مقترحات العناوين */
-    .titles-box {
-        background-color: #f0f7f9; /* لون سماوي فاتح */
-        padding: 25px;
-        border-radius: 8px;
-        border-right: 5px solid #0E738A;
-        font-size: 16px;
-        color: #0E738A;
-    }
-    .titles-header {
-        font-weight: bold; font-size: 18px; margin-bottom: 10px; display: block;
-    }
-
     .stButton>button {
-        width: 100%; height: 65px; font-weight: bold; font-size: 16px;
-        background-color: #D95F18; color: white; border: none; border-radius: 8px;
+        width: 100%; height: 60px; font-weight: bold; font-size: 16px;
+        background-color: #0b57d0; /* أزرق جوجل */
+        color: white; border: none; border-radius: 25px; /* حواف دائرية */
         transition: 0.3s;
     }
-    .stButton>button:hover { background-color: #bf4d0f; }
+    .stButton>button:hover { background-color: #0842a0; box-shadow: 0 4px 12px rgba(11, 87, 208, 0.3); }
+    
+    /* عناوين */
+    h1, h2, h3 { color: #1f1f1f; }
     
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 </style>
@@ -67,98 +49,85 @@ except:
     st.stop()
 
 # ==========================================
-# 3. الموديل
+# 3. إعداد الموديل "العبقري" (Pro 1.5 Only)
 # ==========================================
-def get_best_model():
+def get_studio_model():
+    # نبحث تحديداً عن موديلات Pro لأنها المسؤولة عن الصياغة الذكية
+    # الفلاش Flash سريع لكنه "سطحي"، البرو Pro "عميق"
+    target_models = ['models/gemini-1.5-pro', 'models/gemini-1.5-pro-latest', 'models/gemini-pro']
+    
     try:
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        priority = ['models/gemini-1.5-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
-        for p in priority:
-            if p in available: return p
+        for t in target_models:
+            if t in available: return t
         if available: return available[0]
     except: pass
     return 'gemini-pro'
 
 # ==========================================
-# 4. البرومبت المطور (مع ورشة العناوين)
+# 4. البرومبت "المفتوح" (بدون قيود خانقة)
 # ==========================================
-WEB_PROMPT = """
-أنت رئيس تحرير القسم الرقمي في موقع "ديوان أف أم".
-المهمة: تحويل النص الخام إلى مقال ويب احترافي + اقتراح عناوين بديلة.
+# هذا البرومبت يمنحه الحرية التي يجدها في جوجل ستوديو
+STUDIO_PROMPT = """
+أنت كاتب صحفي مبدع ومحترف من الطراز الرفيع.
+لديك نص خام، والمطلوب منك إعادة صياغته ليصبح **مقالاً استثنائياً** لموقع "ديوان أف أم".
 
-الجزء الأول: المقال (The Article)
-1. اكتب عنواناً رئيسياً للمقال في البداية.
-2. اكتب المقال بأسلوب شيق، فقرات قصيرة (للموبايل)، ولغة عصرية.
-3. اربط الأحداث بذكاء (Context).
+أريدك أن تستخدم ذكاءك في:
+1. **المبادرة:** لا تترجم حرفياً، بل افهم المعنى وأعد صياغته بأسلوبك القوي.
+2. **الربط:** اربط الأحداث ببعضها لتصنع قصة متماسكة.
+3. **اللغة:** استخدم مفردات غنية، عميقة، ومؤثرة (ابتعد عن السطحية).
+4. **العنوان:** ضع عنواناً ذكياً جداً في البداية.
 
-الجزء الثاني: ورشة العناوين (Title Workshop)
-بعد نهاية المقال، ضع فاصلاً ثم اقترح 5 عناوين بديلة احترافية جداً للأنماط التالية:
-1. 🎯 **عنوان SEO:** (دقيق ويحتوي كلمات مفتاحية لمحركات البحث).
-2. 🔥 **عنوان فيسبوك:** (مثير للجدل أو العاطفة لزيادة التفاعل).
-3. ❓ **عنوان تساؤلي:** (يثير فضول القارئ).
-4. 💬 **عنوان اقتباس:** (أقوى جملة قيلت في النص).
-5. ⚡ **عنوان عاجل:** (قصير جداً ومباشر للتنبيهات).
-
-تنسيق الإجابة المطلوب:
-[العنوان الرئيسي]
-[نص المقال...]
----
-[قائمة العناوين المقترحة]
+النص ليس مجرد كلمات، بل هو "قضية". اكتبه بروح المسؤولية والاحترافية.
 """
 
 # ==========================================
 # 5. الواجهة
 # ==========================================
-st.title("🌐 Diwan Web Publisher")
-st.caption("محرر المقالات + مولد العناوين الذكي")
+st.title("✨ Diwan AI Studio")
+st.caption("نسخة مطابقة لجودة Google AI Studio (Gemini 1.5 Pro)")
 
-col_in, col_out = st.columns([1, 1.3])
+col_input, col_output = st.columns([1, 1.2])
 
-with col_in:
-    st.markdown("##### 📄 النص الخام")
-    input_text = st.text_area("ألصق البيان أو النص:", height=600, placeholder="أدخل النص هنا...")
+with col_input:
+    st.markdown("### 📄 النص الأصلي")
+    input_text = st.text_area("مساحة العمل:", height=500, placeholder="ضع النص هنا واتركه يبدع...")
     
-    if st.button("✨ تحرير المقال + اقتراح العناوين"):
+    if st.button("✨ تشغيل (Generate)"):
         if input_text:
-            st.session_state.run_web_titles = True
+            st.session_state.run_studio = True
         else:
-            st.warning("أدخل نصاً أولاً.")
+            st.warning("الرجاء إدخال نص.")
 
-with col_out:
-    st.markdown("##### 💻 المعاينة (المقال + العناوين)")
+with col_output:
+    st.markdown("### 💎 النتيجة")
     
-    if st.session_state.get('run_web_titles') and input_text:
-        with st.spinner('جاري صياغة المقال وعصر الذهن للعناوين...'):
+    if st.session_state.get('run_studio') and input_text:
+        with st.spinner('جاري المعالجة بموديل Pro 1.5 (High Creativity)...'):
             try:
-                model_name = get_best_model()
-                # حرارة 0.85 للحصول على عناوين إبداعية وغير تقليدية
-                model = genai.GenerativeModel(model_name, generation_config={"temperature": 0.85})
+                # 1. الموديل: نستخدم Pro حصراً
+                model_name = get_studio_model()
                 
-                response = model.generate_content(f"{WEB_PROMPT}\n\nالنص الخام:\n{input_text}")
+                # 2. الإعدادات: نفس إعدادات Google Studio الافتراضية
+                # Temperature 0.9 = إبداع عالي ومبادرة
+                studio_config = {
+                    "temperature": 0.9,
+                    "top_p": 1.0,
+                    "top_k": 40,
+                    "max_output_tokens": 8192,
+                }
                 
-                # فصل المقال عن العناوين (باستخدام الفاصل الذي طلبناه في البرومبت)
-                if "---" in response.text:
-                    parts = response.text.split("---")
-                    article_part = parts[0]
-                    titles_part = parts[1]
-                else:
-                    article_part = response.text
-                    titles_part = "لم يتم توليد عناوين منفصلة، طالع النص أعلاه."
-
-                # عرض المقال في صندوق أبيض
-                st.markdown(f"""
-                <div class="article-box">
-                    <div class="article-body">{article_part}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                model = genai.GenerativeModel(model_name, generation_config=studio_config)
                 
-                # عرض العناوين المقترحة في صندوق ملون منفصل
-                st.markdown(f"""
-                <div class="titles-box">
-                    <span class="titles-header">💡 مقترحات عناوين بديلة:</span>
-                    {titles_part}
-                </div>
-                """, unsafe_allow_html=True)
+                # 3. التوليد
+                response = model.generate_content(f"{STUDIO_PROMPT}\n\nالنص الأصلي:\n{input_text}")
+                
+                # 4. العرض بتصميم ستوديو
+                st.markdown(f'<div class="studio-result">{response.text}</div>', unsafe_allow_html=True)
+                
+                # إظهار الموديل المستخدم للتأكد
+                st.caption(f"⚡ Model: {model_name} | Temp: 0.9")
                 
             except Exception as e:
-                st.error("حدث خطأ تقني.")
+                st.error("حدث خطأ في الاتصال.")
+                st.write(e)
