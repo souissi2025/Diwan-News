@@ -82,7 +82,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. دالة الاستكشاف التلقائي للموديل (مصححة)
+# 3. دالة الاستكشاف التلقائي للموديل
 # ==========================================
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -95,25 +95,22 @@ def get_working_model():
     تكتشف الموديل المتاح تلقائياً لتجنب أخطاء 404
     """
     try:
-        # محاولة جلب الموديلات المتاحة
         available_models = []
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
                 available_models.append(m.name)
         
-        # البحث عن الموديلات بالترتيب: فلاش ثم برو
+        # الترتيب: فلاش -> برو
         for m in available_models:
             if 'gemini-1.5-flash' in m: return m
         
         for m in available_models:
             if 'gemini-1.5-pro' in m: return m
             
-        # إذا وجدنا أي موديل آخر
         if available_models:
             return available_models[0]
             
     except Exception:
-        # في حال فشل الاتصال بقائمة الموديلات، نعود لاسم افتراضي آمن
         return 'models/gemini-1.5-flash'
 
     return 'models/gemini-1.5-flash'
@@ -145,40 +142,4 @@ buttons_data = [
     {"id": "article", "label": "صياغة المقال", "icon": "📄"},
 ]
 
-cols = st.columns(len(buttons_data))
-for i, btn in enumerate(buttons_data):
-    with cols[i]:
-        active = (st.session_state.page == btn['id'])
-        if st.button(f"{btn['icon']}\n{btn['label']}", key=btn['id'], type="primary" if active else "secondary", use_container_width=True):
-            set_page(btn['id'])
-            st.rerun()
-
-# ==========================================
-# 5. القواعد والبرومبت
-# ==========================================
-TUNISIAN_RULES = """
-🛑 قواعد إلزامية (Tunisian Style):
-1. التقويم: استخدم الأشهر التونسية (جانفي، فيفري...).
-2. الأسماء: حذف الألقاب (السيد/السيدة) والاكتفاء بالصفة والاسم.
-3. العملة: ذكر المقابل بالدينار التونسي.
-4. التوقيع: ابدأ بـ (تونس - ديوان أف أم).
-5. الأسلوب: موضوعي، هرم مقلوب، لغة قوية.
-"""
-
-prompts = {
-    "article": f"المهمة: صياغة خبر إذاعي رئيسي متكامل.\n{TUNISIAN_RULES}",
-    "titles": f"المهمة: اقتراح 5 عناوين احترافية متنوعة.\n{TUNISIAN_RULES}",
-    "flash": f"المهمة: موجز إخباري سريع ومكثف (أقل من 50 كلمة).\n{TUNISIAN_RULES}",
-    "quotes": f"المهمة: استخراج وتنسيق أهم التصريحات.\n{TUNISIAN_RULES}",
-    "event": "المهمة: البحث عن السياق التاريخي لهذا الحدث.",
-    "audio": f"المهمة: تحرير النص المفرغ صوتياً ليصبح مقروءاً.\n{TUNISIAN_RULES}"
-}
-
-curr_mode = st.session_state.page
-curr_prompt = prompts.get(curr_mode, "")
-curr_label = next((b['label'].replace('\n', ' ') for b in buttons_data if b['id'] == curr_mode), "")
-
-# ==========================================
-# 6. منطقة العمل
-# ==========================================
-st.markdown(f'
+cols = st.columns(len(buttons
