@@ -2,9 +2,8 @@ import streamlit as st
 import google.generativeai as genai
 
 # --- 1. إعداد الصفحة ---
-st.set_page_config(page_title="Diwan Smart Editor", layout="wide", page_icon="🎙️")
+st.set_page_config(page_title="Diwan Newsroom", layout="wide", page_icon="🎙️")
 
-# تصميم الأزرار
 st.markdown("""
 <style>
     .stButton>button {
@@ -21,7 +20,7 @@ try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 except:
-    st.error("⚠️ المفتاح مفقود (Clé manquante)")
+    st.error("⚠️ المفتاح مفقود.")
     st.stop()
 
 # --- 3. التعليمات ---
@@ -37,13 +36,12 @@ PROMPTS = {
 # --- 4. الواجهة ---
 st.title("🎙️ ديوان أف أم - المحرر الذكي")
 
-# حفظ الوضع المختار
 if 'mode' not in st.session_state:
-    st.session_state.mode = "article" # الوضع الافتراضي
+    st.session_state.mode = "article"
 
 def set_mode(m): st.session_state.mode = m
 
-# أزرار اختيار الخدمة
+# الأزرار
 c1, c2, c3 = st.columns(3)
 with c1:
     if st.button("📝 صياغة مقال"): set_mode("article")
@@ -57,53 +55,33 @@ with c3:
 
 st.markdown("---")
 
-# --- 5. منطقة العمل (داخل Form لضمان الاستقرار) ---
+# --- 5. منطقة العمل ---
 titles_map = {
     "article": "📝 صياغة مقال صحفي", "web": "✨ تحرير ويب (SEO)",
     "flash": "((●)) موجز إذاعي", "titles": "T اقتراح عناوين",
     "quotes": "ılı استخراج التصريحات", "history": "📅 حدث في مثل هذا اليوم"
 }
-
 current_mode = st.session_state.mode
 st.header(titles_map[current_mode])
 
-# >> هنا الحل السحري: استخدام st.form <<
+# الفورم
 with st.form("my_form"):
-    text_input = st.text_area("أدخل النص أو التاريخ هنا:", height=200)
-    
-    # زر الإرسال داخل الفورم
-    submitted = st.form_submit_button("🚀 تنفيذ المهمة (Exécuter)")
+    text_input = st.text_area("أدخل النص أو التاريخ:", height=200)
+    submitted = st.form_submit_button("🚀 تنفيذ المهمة")
     
     if submitted:
         if not text_input:
-            st.warning("الرجاء إدخال نص.")
+            st.warning("أدخل نصاً.")
         else:
-            st.info("⏳ جاري الاتصال... (En cours)")
+            st.info("⏳ جاري العمل...")
             try:
-                # استخدام Flash للسرعة
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # هنا التعديل: استخدام الموديل الكلاسيكي المضمون
+                model = genai.GenerativeModel('gemini-pro')
                 
                 response = model.generate_content(
                     f"{PROMPTS[current_mode]}\n\nالنص:\n{text_input}"
                 )
-                
-                # التحقق من وجود رد قبل طباعته
-                if response.text:
-                    st.success("✅ تمت العملية:")
-                    st.markdown(response.text)
-                else:
-                    st.error("⚠️ وصل الرد فارغاً (قد يكون بسبب فلاتر المحتوى).")
-                    
+                st.success("✅ النتيجة:")
+                st.markdown(response.text)
             except Exception as e:
-                # طباعة الخطأ بوضوح
-                st.error(f"❌ حدث خطأ: {e}")
-                # محاولة ثانية بالموديل القديم إذا فشل الجديد
-                try:
-                    st.warning("🔄 محاولة بالموديل الاحتياطي...")
-                    model_pro = genai.GenerativeModel('gemini-1.5-pro')
-                    response_pro = model_pro.generate_content(
-                        f"{PROMPTS[current_mode]}\n\nالنص:\n{text_input}"
-                    )
-                    st.markdown(response_pro.text)
-                except:
-                    pass
+                st.error(f"❌ خطأ: {e}")
