@@ -203,8 +203,7 @@ def set_page(p):
     st.session_state.page = p
 
 buttons_data = [
-    {"id": "event", "label": "حدث في مثل
-هذا اليوم", "icon": "📅"},
+    {"id": "event", "label": "حدث في مثل\nهذا اليوم", "icon": "📅"},
     {"id": "quotes", "label": "أهم التصريحات", "icon": "💬"},
     {"id": "flash", "label": "موجز إذاعي", "icon": "📻"},
     {"id": "audio", "label": "من صوت لنص", "icon": "🎙️"},
@@ -216,8 +215,7 @@ cols = st.columns(len(buttons_data))
 for i, btn in enumerate(buttons_data):
     with cols[i]:
         active = (st.session_state.page == btn['id'])
-        if st.button(f"{btn['icon']}
-{btn['label']}", key=btn['id'], 
+        if st.button(f"{btn['icon']}\n{btn['label']}", key=btn['id'], 
                      type="primary" if active else "secondary", use_container_width=True):
             set_page(btn['id'])
             st.rerun()
@@ -235,19 +233,117 @@ TUNISIAN_RULES = """
 """
 
 prompts = {
-    "article": f"المهمة: صياغة خبر إذاعي رئيسي متكامل.
-{TUNISIAN_RULES}",
-    "titles": f"المهمة: اقتراح 5 عناوين احترافية متنوعة.
-{TUNISIAN_RULES}",
-    "flash": f"المهمة: موجز إخباري سريع ومكثف (أقل من 50 كلمة).
-{TUNISIAN_RULES}",
-    "quotes": f"المهمة: استخراج وتنسيق أهم التصريحات.
-{TUNISIAN_RULES}",
+    "article": f"المهمة: صياغة خبر إذاعي رئيسي متكامل.\n{TUNISIAN_RULES}",
+    "titles": f"المهمة: اقتراح 5 عناوين احترافية متنوعة.\n{TUNISIAN_RULES}",
+    "flash": f"المهمة: موجز إخباري سريع ومكثف (أقل من 50 كلمة).\n{TUNISIAN_RULES}",
+    "quotes": f"المهمة: استخراج وتنسيق أهم التصريحات.\n{TUNISIAN_RULES}",
     "event": "المهمة: البحث عن السياق التاريخي لهذا الحدث.",
-    "audio": f"المهمة: تحرير النص المفرغ صوتياً ليصبح مقروءاً.
-{TUNISIAN_RULES}"
+    "audio": f"المهمة: تحرير النص المفرغ صوتياً ليصبح مقروءاً.\n{TUNISIAN_RULES}"
 }
 
 curr_mode = st.session_state.page
 curr_prompt = prompts.get(curr_mode, prompts["article"])
-curr_label = 
+curr_label = next((b['label'].replace('\n', ' ') for b in buttons_data if b['id'] == curr_mode), "صياغة المقال")
+
+# ==========================================
+# 6. منطقة العمل - محسّنة ✅
+# ==========================================
+
+# القسم العلوي: إدخال النص
+st.markdown(f'<div class="input-card">', unsafe_allow_html=True)
+st.markdown(f'<div class="section-label">📌 النص الخام (INPUT) - {curr_label}</div>', unsafe_allow_html=True)
+input_text = st.text_area("input", height=200, label_visibility="collapsed", 
+                           placeholder="أدخل النص هنا...")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# زر المعالجة
+c1, c2, c3 = st.columns([1, 2, 1]) 
+with c2:
+    process_btn = st.button("✨ معالجة فورية ✨", type="primary", use_container_width=True)
+
+# القسم السفلي: النتيجة - مع معالجة أفضل للأخطاء ✅
+if process_btn and input_text:
+    
+    with st.spinner('⏳ جاري تحليل النص وصياغته بذكاء...'):
+        try:
+            # الحصول على الموديل
+            model_name = get_best_model()
+            
+            # إعدادات التوليد
+            cfg = {
+                "temperature": 0.7,
+                "max_output_tokens": 8192,
+                "top_p": 0.95,
+                "top_k": 40
+            }
+            
+            # إنشاء الموديل
+            model = genai.GenerativeModel(model_name, generation_config=cfg)
+            
+            # إعداد البرومبت الكامل
+            full_prompt = f"{curr_prompt}\n\nالنص الخام:\n{input_text}"
+            
+            # حاوية النتيجة
+            st.markdown(f'<div class="section-label" style="margin-top:30px; color:white;">💎 النتيجة النهائية</div>', 
+                       unsafe_allow_html=True)
+            res_placeholder = st.empty()
+            
+            full_text = ""
+            
+            # محاولة الـ streaming أولاً
+            try:
+                response = model.generate_content(full_prompt, stream=True)
+                
+                for chunk in response:
+                    if hasattr(chunk, 'text') and chunk.text:
+                        full_text += chunk.text
+                        # تحديث النص
+                        res_placeholder.markdown(
+                            f'<div class="result-card">{full_text}</div>', 
+                            unsafe_allow_html=True
+                        )
+                        
+            except Exception as stream_error:
+                # إذا فشل الـ streaming، استخدم الطريقة العادية
+                st.warning("التبديل إلى الوضع العادي...")
+                response = model.generate_content(full_prompt, stream=False)
+                
+                if response and hasattr(response, 'text'):
+                    full_text = response.text
+                    res_placeholder.markdown(
+                        f'<div class="result-card">{full_text}</div>', 
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.error("❌ لم يتم الحصول على استجابة من الذكاء الاصطناعي")
+                    
+        except Exception as e:
+            st.error(f"❌ حدث خطأ: {str(e)}")
+            
+            # معلومات تصحيح إضافية
+            with st.expander("📋 تفاصيل الخطأ (للمطورين)"):
+                st.code(f"""
+نوع الخطأ: {type(e).__name__}
+الرسالة: {str(e)}
+الموديل المستخدم: {model_name if 'model_name' in locals() else 'غير معروف'}
+                """)
+
+elif process_btn and not input_text:
+    st.warning("⚠️ الرجاء إدخال نص أولاً!")
+
+# ==========================================
+# 7. معلومات إضافية في الـ sidebar
+# ==========================================
+with st.sidebar:
+    st.markdown("### ℹ️ معلومات التطبيق")
+    st.info(f"**الموديل المستخدم:** {get_best_model()}")
+    st.success("✅ API متصل بنجاح" if api_ready else "❌ خطأ في الاتصال")
+    
+    st.markdown("---")
+    st.markdown("### 📖 كيفية الاستخدام")
+    st.markdown("""
+    1. اختر نوع المعالجة من الأزرار العلوية
+    2. أدخل النص الخام في المربع
+    3. اضغط على "معالجة فورية"
+    4. انتظر النتيجة
+    """)
